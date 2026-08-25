@@ -74,6 +74,8 @@ Open `http://127.0.0.1:4175` and sign in with `TORRENTFLOW_ADMIN_PASSWORD`.
 
 ## Synology / Docker Compose deployment
 
+For Windows Git Bash or a NAS shell, [`scripts/setup-docker-env.sh`](scripts/setup-docker-env.sh) creates the untracked `.env` file with hidden secret input before deployment.
+
 1. Copy `.env.example` to `.env` beside `docker-compose.yml`, then replace the two required session values. The deployment refuses placeholder values, passwords shorter than 12 characters, and session secrets shorter than 32 characters. Keep `.env` private.
 2. In Synology Container Manager, create a project from this directory or run `docker compose up -d --build` over SSH.
 3. Open `http://<NAS-IP>:4175`. The `backend` container runs Alembic migrations before accepting requests; `frontend` waits for its health check.
