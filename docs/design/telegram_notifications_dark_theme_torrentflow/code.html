@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>TorrentFlow - Telegram Notification Settings</title>
+<script type="text/javascript" nonce="133b61224ffc44d4a1c751b2047" src="//local.adguard.org?ts=1787508420161&amp;type=content-script&amp;dmn=contribution.usercontent.google.com&amp;url=https%3A%2F%2Fcontribution.usercontent.google.com%2Fdownload%3Fc%3DCgthaWRhX2NvZGVmeBJ8Eh1hcHBfY29tcGFuaW9uX2dlbmVyYXRlZF9maWxlcxpbCiVodG1sXzAwMDY1OWJiNzY4ZWUxMWEwNGU3NGJkZDY1MmM4ZTVjEgsSBxC5m6_kxAYYAZIBJAoKcHJvamVjdF9pZBIWQhQxNTQzNjQ1MjM4OTY2MzQ5NzA0OQ%26filename%3D%26opi%3D89354086&amp;app=chrome.exe&amp;css=3&amp;js=1&amp;rel=1&amp;rji=1&amp;sbe=0&amp;stealth=1&amp;st-dnt"></script><script type="text/javascript" nonce="133b61224ffc44d4a1c751b2047" src="//local.adguard.org?ts=1787508420161&amp;name=%5BVOT%5D%20-%20Voice%20Over%20Translation&amp;name=AdGuard%20Assistant&amp;name=AdGuard%20Extra&amp;type=user-script"></script><script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-surface": "#e0e2ed",
+                    "surface-container-highest": "#31353d",
+                    "on-secondary-fixed-variant": "#004f53",
+                    "on-tertiary-fixed-variant": "#8a1d00",
+                    "on-secondary-container": "#006c71",
+                    "primary": "#adc6ff",
+                    "secondary": "#e6feff",
+                    "surface-container-low": "#181c23",
+                    "on-primary": "#002e69",
+                    "surface-bright": "#363942",
+                    "on-primary-fixed": "#001a41",
+                    "surface-container": "#1c2028",
+                    "on-primary-container": "#00285c",
+                    "primary-fixed": "#d8e2ff",
+                    "surface": "#10131b",
+                    "on-surface-variant": "#c1c6d7",
+                    "outline-variant": "#414755",
+                    "tertiary-fixed": "#ffdad2",
+                    "inverse-on-surface": "#2d3039",
+                    "secondary-fixed-dim": "#00dce5",
+                    "surface-tint": "#adc6ff",
+                    "on-secondary-fixed": "#002021",
+                    "error-container": "#93000a",
+                    "on-background": "#e0e2ed",
+                    "surface-container-lowest": "#0b0e16",
+                    "on-primary-fixed-variant": "#004493",
+                    "on-secondary": "#003739",
+                    "secondary-fixed": "#63f7ff",
+                    "surface-dim": "#10131b",
+                    "secondary-container": "#00f4fe",
+                    "error": "#ffb4ab",
+                    "on-error": "#690005",
+                    "primary-container": "#4b8eff",
+                    "inverse-primary": "#005bc1",
+                    "tertiary-fixed-dim": "#ffb4a2",
+                    "inverse-surface": "#e0e2ed",
+                    "surface-variant": "#31353d",
+                    "on-tertiary-container": "#560e00",
+                    "on-error-container": "#ffdad6",
+                    "on-tertiary": "#621100",
+                    "background": "#10131b",
+                    "tertiary-container": "#ff562c",
+                    "surface-container-high": "#272a32",
+                    "outline": "#8b90a0",
+                    "on-tertiary-fixed": "#3c0700",
+                    "primary-fixed-dim": "#adc6ff",
+                    "tertiary": "#ffb4a2"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "sidebar-width": "80px",
+                    "gutter-md": "16px",
+                    "container-padding": "24px",
+                    "base": "8px",
+                    "margin-lg": "32px"
+            },
+            "fontFamily": {
+                    "label-sm": [
+                            "JetBrains Mono"
+                    ],
+                    "headline-lg": [
+                            "Inter"
+                    ],
+                    "body-md": [
+                            "Inter"
+                    ],
+                    "display-lg": [
+                            "Inter"
+                    ],
+                    "headline-lg-mobile": [
+                            "Inter"
+                    ],
+                    "stats-number": [
+                            "Inter"
+                    ],
+                    "title-md": [
+                            "Inter"
+                    ]
+            },
+            "fontSize": {
+                    "label-sm": [
+                            "12px",
+                            {
+                                    "lineHeight": "16px",
+                                    "letterSpacing": "0.05em",
+                                    "fontWeight": "500"
+                            }
+                    ],
+                    "headline-lg": [
+                            "32px",
+                            {
+                                    "lineHeight": "40px",
+                                    "letterSpacing": "-0.01em",
+                                    "fontWeight": "600"
+                            }
+                    ],
+                    "body-md": [
+                            "16px",
+                            {
+                                    "lineHeight": "24px",
+                                    "fontWeight": "400"
+                            }
+                    ],
+                    "display-lg": [
+                            "48px",
+                            {
+                                    "lineHeight": "56px",
+                                    "letterSpacing": "-0.02em",
+                                    "fontWeight": "700"
+                            }
+                    ],
+                    "headline-lg-mobile": [
+                            "24px",
+                            {
+                                    "lineHeight": "32px",
+                                    "fontWeight": "600"
+                            }
+                    ],
+                    "stats-number": [
+                            "28px",
+                            {
+                                    "lineHeight": "32px",
+                                    "fontWeight": "700"
+                            }
+                    ],
+                    "title-md": [
+                            "18px",
+                            {
+                                    "lineHeight": "24px",
+                                    "fontWeight": "500"
+                            }
+                    ]
+            }
+    },
+        },
+      }
+    </script>
+<style>
+        body {
+            background-color: #10131b;
+            color: #e0e2ed;
+            overflow-x: hidden;
+        }
+        
+        /* Glassmorphism & Glow Effects */
+        .glass-panel {
+            background: rgba(24, 28, 35, 0.7);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid transparent;
+            background-clip: padding-box;
+            position: relative;
+        }
+        
+        .glass-panel::before {
+            content: '';
+            position: absolute;
+            top: 0; right: 0; bottom: 0; left: 0;
+            z-index: -1;
+            margin: -1px;
+            border-radius: inherit;
+            background: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0) 100%);
+        }
+
+        .input-glass {
+            background: rgba(5, 7, 10, 0.4);
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);
+            transition: all 0.3s ease;
+        }
+
+        .input-glass:focus-within {
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.5), 0 0 0 1px theme('colors.primary');
+        }
+
+        .btn-glow {
+            box-shadow: 0 0 15px rgba(75, 142, 255, 0.3);
+            transition: all 0.3s ease;
+        }
+        
+        .btn-glow:hover {
+            box-shadow: 0 0 25px rgba(75, 142, 255, 0.6);
+            transform: translateY(-1px);
+        }
+
+        .neon-border-focus:focus-within {
+            box-shadow: 0 0 0 1px #adc6ff;
+        }
+
+        /* Custom Toggle Switch */
+        .toggle-checkbox:checked {
+            right: 0;
+            border-color: theme('colors.primary');
+        }
+        .toggle-checkbox:checked + .toggle-label {
+            background-color: theme('colors.primary-container');
+        }
+        .toggle-checkbox:checked + .toggle-label:after {
+            transform: translateX(100%);
+            border-color: white;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #10131b; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #31353d; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #414755; 
+        }
+    </style>
+</head>
+<body class="antialiased min-h-screen flex selection:bg-primary-container selection:text-on-primary-container font-body-md text-body-md">
+<!-- Ambient Background Effect -->
+<div class="fixed inset-0 z-[-1] pointer-events-none" style="background: radial-gradient(circle at 20% 30%, rgba(0, 80, 150, 0.15) 0%, transparent 50%), radial-gradient(circle at 80% 70%, rgba(0, 220, 229, 0.1) 0%, transparent 50%);"></div>
+<!-- SideNavBar (Shared Component) -->
+<nav class="bg-surface-container-low/70 backdrop-blur-xl w-sidebar-width h-screen fixed left-0 top-0 border-r border-white/10 shadow-2xl shadow-primary/5 flex flex-col items-center py-base gap-margin-lg z-50 hidden md:flex">
+<!-- Brand Logo Area -->
+<div class="w-12 h-12 rounded-xl bg-primary-container flex items-center justify-center mt-4 shadow-[0_0_15px_rgba(75,142,255,0.4)]">
+<span class="material-symbols-outlined text-on-primary-container" style="font-variation-settings: 'FILL' 1;">waves</span>
+</div>
+<!-- Navigation Tabs -->
+<div class="flex-1 w-full flex flex-col items-center gap-6 mt-8">
+<button class="text-on-surface-variant opacity-60 hover:text-primary-fixed hover:opacity-100 transition-all duration-300 scale-110 transition-transform duration-200 flex flex-col items-center justify-center w-12 h-12 rounded-lg" title="Dashboard">
+<span class="material-symbols-outlined">dashboard</span>
+</button>
+<button class="text-on-surface-variant opacity-60 hover:text-primary-fixed hover:opacity-100 transition-all duration-300 scale-110 transition-transform duration-200 flex flex-col items-center justify-center w-12 h-12 rounded-lg" title="RSS Feeds">
+<span class="material-symbols-outlined">rss_feed</span>
+</button>
+<button class="text-on-surface-variant opacity-60 hover:text-primary-fixed hover:opacity-100 transition-all duration-300 scale-110 transition-transform duration-200 flex flex-col items-center justify-center w-12 h-12 rounded-lg" title="History">
+<span class="material-symbols-outlined">history</span>
+</button>
+<!-- Active Tab: Notifications -->
+<button class="text-primary drop-shadow-[0_0_8px_rgba(173,198,255,0.6)] scale-110 flex flex-col items-center justify-center w-12 h-12 rounded-lg bg-white/5" title="Notifications">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">notifications_active</span>
+</button>
+</div>
+<!-- Footer Tabs -->
+<div class="w-full flex flex-col items-center gap-6 mb-8">
+<button class="text-on-surface-variant opacity-60 hover:text-primary-fixed hover:opacity-100 transition-all duration-300 scale-110 transition-transform duration-200 flex flex-col items-center justify-center w-12 h-12 rounded-lg" title="Settings">
+<span class="material-symbols-outlined">settings</span>
+</button>
+<button class="text-on-surface-variant opacity-60 hover:text-primary-fixed hover:opacity-100 transition-all duration-300 scale-110 transition-transform duration-200 flex flex-col items-center justify-center w-12 h-12 rounded-lg" title="Logout">
+<span class="material-symbols-outlined">logout</span>
+</button>
+</div>
+</nav>
+<!-- Bottom Nav for Mobile -->
+<nav class="bg-surface-container-low/90 backdrop-blur-xl border-t border-white/10 fixed bottom-0 left-0 right-0 h-16 z-50 flex md:hidden justify-around items-center px-4">
+<button class="text-on-surface-variant opacity-60 flex flex-col items-center justify-center w-12 h-12">
+<span class="material-symbols-outlined">dashboard</span>
+</button>
+<button class="text-on-surface-variant opacity-60 flex flex-col items-center justify-center w-12 h-12">
+<span class="material-symbols-outlined">rss_feed</span>
+</button>
+<button class="text-on-surface-variant opacity-60 flex flex-col items-center justify-center w-12 h-12">
+<span class="material-symbols-outlined">history</span>
+</button>
+<button class="text-primary flex flex-col items-center justify-center w-12 h-12 drop-shadow-[0_0_8px_rgba(173,198,255,0.6)]">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">notifications_active</span>
+</button>
+</nav>
+<!-- Main Content Area -->
+<main class="flex-1 w-full md:pl-sidebar-width flex flex-col min-h-screen pb-20 md:pb-0">
+<!-- TopAppBar -->
+<header class="bg-transparent fixed top-0 right-0 left-0 md:left-sidebar-width h-16 z-40 bg-surface/10 backdrop-blur-md border-b border-white/5 flex justify-between items-center px-container-padding w-full md:w-[calc(100%-80px)]">
+<!-- Left: Brand / Title -->
+<div class="flex items-center gap-4">
+<h1 class="font-headline-lg text-headline-lg-mobile md:text-headline-lg font-bold text-on-surface hidden sm:block">TorrentFlow</h1>
+</div>
+<!-- Right: Search & Actions -->
+<div class="flex items-center gap-6">
+<!-- Search Bar -->
+<div class="hidden md:flex items-center bg-[#05070A]/40 rounded-full px-4 py-2 border border-white/10 neon-border-focus transition-shadow">
+<span class="material-symbols-outlined text-on-surface-variant mr-2 text-sm">search</span>
+<input class="bg-transparent border-none text-sm text-on-surface placeholder:text-on-surface-variant/50 focus:ring-0 w-64 font-body-md" placeholder="Search..." type="text"/>
+</div>
+<!-- Navigation Links -->
+<div class="hidden lg:flex items-center gap-6 mr-4">
+<button class="font-title-md text-title-md text-on-surface-variant hover:text-primary-fixed-dim transition-colors py-4">Monitoring</button>
+<button class="font-title-md text-title-md text-on-surface-variant hover:text-primary-fixed-dim transition-colors py-4">Bandwidth</button>
+<button class="font-title-md text-title-md text-on-surface-variant hover:text-primary-fixed-dim transition-colors py-4">Peers</button>
+</div>
+<!-- Trailing Actions -->
+<div class="flex items-center gap-3 border-l border-white/10 pl-4">
+<button class="text-on-surface-variant hover:text-primary transition-colors w-8 h-8 flex items-center justify-center">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="text-on-surface-variant hover:text-primary transition-colors w-8 h-8 flex items-center justify-center">
+<span class="material-symbols-outlined">person_outline</span>
+</button>
+<button class="hidden sm:flex bg-gradient-to-r from-[#005bc1] to-[#00f4fe] text-white px-4 py-2 rounded-lg font-label-sm text-label-sm hover:shadow-[0_0_15px_rgba(0,244,254,0.3)] transition-shadow items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">add</span>
+                        Add Magnet
+                    </button>
+</div>
+</div>
+</header>
+<!-- Canvas -->
+<div class="pt-24 px-4 md:px-container-padding max-w-[1600px] w-full mx-auto flex flex-col gap-margin-lg pb-12">
+<div class="mb-2">
+<h2 class="font-display-lg text-headline-lg md:text-display-lg text-on-surface mb-2">Telegram Integration</h2>
+<p class="text-on-surface-variant font-body-md text-body-md max-w-2xl">Configure your Telegram bot to receive real-time alerts for system events, downloads, and errors.</p>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+<!-- Main Settings Column -->
+<div class="lg:col-span-2 space-y-6">
+<!-- Bot Connection Card -->
+<div class="glass-panel rounded-2xl p-6 md:p-8 relative overflow-hidden">
+<div class="flex items-start gap-4 mb-8 relative z-10">
+<div class="w-12 h-12 rounded-xl bg-surface-container flex items-center justify-center border border-white/5 text-primary shadow-[0_0_15px_rgba(75,142,255,0.1)]">
+<span class="material-symbols-outlined text-2xl">smart_toy</span>
+</div>
+<div>
+<h3 class="font-title-md text-title-md text-on-surface">Bot Configuration</h3>
+<p class="text-on-surface-variant text-sm mt-1">Connect your bot using the token provided by BotFather.</p>
+</div>
+</div>
+<div class="space-y-6 relative z-10">
+<div>
+<label class="block font-label-sm text-label-sm text-on-surface-variant mb-2 uppercase tracking-wider">Bot Token</label>
+<div class="input-glass rounded-xl flex items-center border border-white/5 overflow-hidden focus-within:border-primary/50 transition-colors">
+<span class="material-symbols-outlined text-on-surface-variant/50 pl-4">key</span>
+<input class="bg-transparent border-none focus:ring-0 w-full text-on-surface font-label-sm py-3 px-3" placeholder="Enter Bot Token" type="password" value="<REDACTED_TELEGRAM_TOKEN>"/>
+<button class="pr-4 text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-sm">visibility</span>
+</button>
+</div>
+</div>
+<div>
+<label class="block font-label-sm text-label-sm text-on-surface-variant mb-2 uppercase tracking-wider">Chat ID</label>
+<div class="relative">
+<select class="input-glass appearance-none w-full rounded-xl border border-white/5 bg-transparent text-on-surface font-label-sm py-3 pl-4 pr-10 focus:ring-0 focus:border-primary/50 transition-colors">
+<option class="bg-surface" value="-1001234567890">Main Alert Channel (-1001234567890)</option>
+<option class="bg-surface" value="987654321">Direct Message (987654321)</option>
+<option class="bg-surface" value="new">+ Add New Chat ID</option>
+</select>
+<div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-on-surface-variant">
+<span class="material-symbols-outlined text-sm">expand_more</span>
+</div>
+</div>
+</div>
+<div class="pt-6 mt-2 border-t border-white/5 flex justify-end">
+<button class="bg-surface-container hover:bg-surface-bright text-on-surface border border-white/10 px-5 py-2.5 rounded-lg font-label-sm text-label-sm transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">sync</span>
+                                    Verify Connection
+                                </button>
+</div>
+</div>
+</div>
+<!-- Notification Triggers Card -->
+<div class="glass-panel rounded-2xl p-6 md:p-8">
+<div class="flex items-start gap-4 mb-8">
+<div class="w-12 h-12 rounded-xl bg-surface-container flex items-center justify-center border border-white/5 text-secondary-container shadow-[0_0_15px_rgba(0,244,254,0.1)]">
+<span class="material-symbols-outlined text-2xl">bolt</span>
+</div>
+<div>
+<h3 class="font-title-md text-title-md text-on-surface">Event Triggers</h3>
+<p class="text-on-surface-variant text-sm mt-1">Select which events will trigger a Telegram notification.</p>
+</div>
+</div>
+<div class="space-y-2">
+<!-- Toggle Item 1 -->
+<div class="flex items-center justify-between py-4 px-3 hover:bg-white/5 rounded-xl transition-colors">
+<div>
+<div class="text-on-surface font-medium">New Release Found</div>
+<div class="text-on-surface-variant text-sm mt-1">Alert when RSS filters match a new item.</div>
+</div>
+<div class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
+<input checked="" class="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 appearance-none cursor-pointer z-10 transition-transform duration-200 right-0 border-primary" id="toggle1" name="toggle1" type="checkbox"/>
+<label class="toggle-label block overflow-hidden h-5 rounded-full bg-primary-container cursor-pointer transition-colors duration-200" for="toggle1"></label>
+</div>
+</div>
+<!-- Toggle Item 2 -->
+<div class="flex items-center justify-between py-4 px-3 hover:bg-white/5 rounded-xl transition-colors">
+<div>
+<div class="text-on-surface font-medium">Download Started</div>
+<div class="text-on-surface-variant text-sm mt-1">Alert when a new torrent begins downloading.</div>
+</div>
+<div class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
+<input checked="" class="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 appearance-none cursor-pointer z-10 transition-transform duration-200 right-0 border-primary" id="toggle2" name="toggle2" type="checkbox"/>
+<label class="toggle-label block overflow-hidden h-5 rounded-full bg-primary-container cursor-pointer transition-colors duration-200" for="toggle2"></label>
+</div>
+</div>
+<!-- Toggle Item 3 -->
+<div class="flex items-center justify-between py-4 px-3 hover:bg-white/5 rounded-xl transition-colors">
+<div>
+<div class="text-on-surface font-medium">Download Finished</div>
+<div class="text-on-surface-variant text-sm mt-1">Alert when a torrent completes seeding criteria.</div>
+</div>
+<div class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
+<input class="toggle-checkbox absolute block w-5 h-5 rounded-full bg-outline-variant border-4 border-surface appearance-none cursor-pointer z-10 transition-transform duration-200 left-0" id="toggle3" name="toggle3" type="checkbox"/>
+<label class="toggle-label block overflow-hidden h-5 rounded-full bg-surface-container-highest cursor-pointer transition-colors duration-200" for="toggle3"></label>
+</div>
+</div>
+<!-- Toggle Item 4 -->
+<div class="flex items-center justify-between py-4 px-3 hover:bg-white/5 rounded-xl transition-colors">
+<div>
+<div class="text-on-surface font-medium text-error">System Error</div>
+<div class="text-on-surface-variant text-sm mt-1">Critical alerts for storage space or tracker failures.</div>
+</div>
+<div class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
+<input checked="" class="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 appearance-none cursor-pointer z-10 transition-transform duration-200 right-0 border-primary" id="toggle4" name="toggle4" type="checkbox"/>
+<label class="toggle-label block overflow-hidden h-5 rounded-full bg-primary-container cursor-pointer transition-colors duration-200" for="toggle4"></label>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Side Info Column -->
+<div class="space-y-6">
+<!-- Action Card -->
+<div class="glass-panel rounded-2xl p-6 md:p-8 text-center flex flex-col items-center justify-center">
+<div class="w-16 h-16 mb-6 bg-surface-container rounded-full flex items-center justify-center border border-white/5 relative shadow-[0_0_20px_rgba(75,142,255,0.15)]">
+<div class="absolute inset-0 rounded-full border border-primary/30 animate-[spin_4s_linear_infinite]"></div>
+<span class="material-symbols-outlined text-primary text-2xl">send</span>
+</div>
+<h4 class="font-title-md text-title-md text-on-surface mb-2">Test Configuration</h4>
+<p class="text-sm text-on-surface-variant mb-8">Send a test payload to verify your bot token and chat ID are correct.</p>
+<button class="w-full bg-gradient-to-r from-[#005bc1] to-[#00f4fe] text-white px-4 py-3.5 rounded-xl font-label-sm text-label-sm font-bold hover:shadow-[0_0_20px_rgba(0,244,254,0.3)] transition-shadow flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-[18px]">chat_bubble</span>
+                            Send Test Message
+                        </button>
+</div>
+<!-- Status Info -->
+<div class="glass-panel rounded-2xl p-6 border-l-4 border-l-secondary-container">
+<h4 class="text-sm font-bold text-on-surface mb-2 flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-secondary-container animate-pulse shadow-[0_0_8px_rgba(0,244,254,0.6)]"></span>
+                            Service Active
+                        </h4>
+<p class="text-xs text-on-surface-variant leading-relaxed">Last successful message sent 4 hours ago. Bot is currently polling for new events.</p>
+</div>
+<!-- Illustration Placeholder -->
+<div class="glass-panel rounded-2xl p-1 h-40 overflow-hidden flex items-center justify-center opacity-80 border border-white/5">
+<img class="w-full h-full object-cover rounded-xl opacity-60 mix-blend-screen" data-alt="A stylized 3D rendered isometric illustration of a robotic telegram paper plane logo hovering over a dark server rack. Neon blue and cyan accents, dark mode aesthetic, high tech futuristic vibe, glowing circuits." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD3iSyrUFmxcUYdZOCNMCpl5zJZ_5MsVj2b_62c7R9wt-6ppBq2iUpxL9HinCQcSUE_jNJ8L4OFfooyouWjxp5FYvAyRGj5NBw8q_2_NldqwJsgxs9cQrft_wPr1xVN1TlCJKA0AwyEw_4RJzauLdXAdMK0zx6rR0nP1_rRTioaEimo1HYnnrSi4ac7-xBbqBV5o4j045WFS8icFGXniBiQj6w0suF2NOa8IX5fAiCAuc7VSKXFB2eGDQ"/>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>

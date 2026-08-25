@@ -1,0 +1,309 @@
+<!DOCTYPE html><html class="dark" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>TorrentFlow - Latest Releases</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "secondary-fixed-dim": "#00dce5",
+                        "inverse-on-surface": "#2d3039",
+                        "tertiary": "#ffb4a2",
+                        "surface-bright": "#363942",
+                        "on-surface": "#e0e2ed",
+                        "secondary-fixed": "#63f7ff",
+                        "surface-container-low": "#181c23",
+                        "on-secondary-container": "#006c71",
+                        "outline-variant": "#414755",
+                        "secondary": "#e6feff",
+                        "on-primary-fixed": "#001a41",
+                        "on-secondary": "#003739",
+                        "tertiary-fixed": "#ffdad2",
+                        "surface-container-high": "#272a32",
+                        "inverse-primary": "#005bc1",
+                        "primary": "#adc6ff",
+                        "primary-fixed-dim": "#adc6ff",
+                        "on-error": "#690005",
+                        "inverse-surface": "#e0e2ed",
+                        "on-background": "#e0e2ed",
+                        "tertiary-container": "#ff562c",
+                        "surface-container-highest": "#31353d",
+                        "primary-fixed": "#d8e2ff",
+                        "on-primary-fixed-variant": "#004493",
+                        "surface": "#10131b",
+                        "surface-container-lowest": "#0b0e16",
+                        "on-tertiary-container": "#560e00",
+                        "background": "#10131b",
+                        "surface-variant": "#31353d",
+                        "surface-dim": "#10131b",
+                        "on-tertiary-fixed": "#3c0700",
+                        "on-tertiary-fixed-variant": "#8a1d00",
+                        "on-secondary-fixed-variant": "#004f53",
+                        "error-container": "#93000a",
+                        "on-surface-variant": "#c1c6d7",
+                        "surface-tint": "#adc6ff",
+                        "error": "#ffb4ab",
+                        "on-primary-container": "#00285c",
+                        "secondary-container": "#00f4fe",
+                        "tertiary-fixed-dim": "#ffb4a2",
+                        "on-tertiary": "#621100",
+                        "on-secondary-fixed": "#002021",
+                        "on-error-container": "#ffdad6",
+                        "on-primary": "#002e69",
+                        "primary-container": "#4b8eff",
+                        "surface-container": "#1c2028",
+                        "outline": "#8b90a0"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "margin-lg": "32px",
+                        "base": "8px",
+                        "sidebar-width": "80px",
+                        "gutter-md": "16px",
+                        "container-padding": "24px"
+                    },
+                    "fontFamily": {
+                        "display-lg": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "body-md": ["Inter"],
+                        "title-md": ["Inter"],
+                        "label-sm": ["JetBrains Mono"],
+                        "headline-lg-mobile": ["Inter"],
+                        "stats-number": ["Inter"]
+                    },
+                    "fontSize": {
+                        "display-lg": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "title-md": ["18px", { "lineHeight": "24px", "fontWeight": "500" }],
+                        "label-sm": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500" }],
+                        "headline-lg-mobile": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "stats-number": ["28px", { "lineHeight": "32px", "fontWeight": "700" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .glass-card {
+            background-color: rgba(24, 28, 35, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid transparent;
+            background-image: linear-gradient(rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0)), linear-gradient(rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0));
+            background-origin: border-box;
+            background-clip: padding-box, border-box;
+        }
+        .neon-glow:hover {
+            box-shadow: 0 0 15px rgba(173, 198, 255, 0.2);
+        }
+        .glow-active {
+            box-shadow: 0 0 15px rgba(173, 198, 255, 0.2);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md min-h-screen flex selection:bg-primary-container selection:text-on-primary-container">
+<!-- SideNavBar -->
+<nav class="hidden md:flex flex-col items-center py-base gap-margin-lg bg-surface-container-low/70 backdrop-blur-xl w-sidebar-width h-screen fixed left-0 top-0 border-r border-white/10 shadow-2xl shadow-primary/5 z-50">
+<!-- Brand / Avatar -->
+<div class="mt-4 flex flex-col items-center">
+<div class="w-10 h-10 rounded-full bg-primary-container flex items-center justify-center mb-2 overflow-hidden border border-primary/30">
+<img alt="System Administrator" class="w-full h-full object-cover" data-alt="A highly detailed close-up of a futuristic glowing neon blue sphere inside a dark obsidian cube. The lighting is dramatic and cinematic, reflecting a high-end tech aesthetic. Deep blacks and vibrant cyan highlights dominate the composition." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDQvLZn0A60BV9mD7LNFfmcrBEeYKKx7rvFfm7qC9S74ewFYDZAPWJH2qUvOQKkqckpUyHUQhnBHlTz5KS1XOu2WosQkxC0r9Sf2aCDY_uOt3UBQvTcGasPJCi0R_V8BXlcV1A2pacmD6RQ2etMHeBTFQ-xzb7bWC47Lu6GW0151fJxxib7SiLj4nfhIchtnhNwRiTgEC-Do8jajperyhzyG6F4w8E-erIWvJ0krD3slHBXt5E6GuQzmw">
+</div>
+</div>
+<!-- Navigation Tabs -->
+<div class="flex-1 flex flex-col gap-6 w-full items-center mt-8">
+<a class="text-on-surface-variant opacity-60 hover:text-primary-fixed hover:opacity-100 transition-all duration-300 scale-110 transition-transform duration-200 flex flex-col items-center gap-1 group" href="#">
+<span class="material-symbols-outlined group-hover:scale-110 transition-transform">dashboard</span>
+<span class="font-label-sm text-label-sm">Dashboard</span>
+</a>
+<a class="text-primary drop-shadow-[0_0_8px_rgba(173,198,255,0.6)] scale-110 transition-all duration-300 transition-transform duration-200 flex flex-col items-center gap-1 group" href="#">
+<span class="material-symbols-outlined">rss_feed</span>
+<span class="font-label-sm text-label-sm">RSS Feeds</span>
+</a>
+<a class="text-on-surface-variant opacity-60 hover:text-primary-fixed hover:opacity-100 transition-all duration-300 scale-110 transition-transform duration-200 flex flex-col items-center gap-1 group" href="#">
+<span class="material-symbols-outlined group-hover:scale-110 transition-transform">history</span>
+<span class="font-label-sm text-label-sm">History</span>
+</a>
+<a class="text-on-surface-variant opacity-60 hover:text-primary-fixed hover:opacity-100 transition-all duration-300 scale-110 transition-transform duration-200 flex flex-col items-center gap-1 group" href="#">
+<span class="material-symbols-outlined group-hover:scale-110 transition-transform">notifications_active</span>
+<span class="font-label-sm text-label-sm text-center">Notifications</span>
+</a>
+</div>
+<!-- Bottom Actions -->
+<div class="flex flex-col gap-6 w-full items-center mb-6">
+<button class="w-12 h-12 rounded-full bg-gradient-to-br from-primary-container to-secondary-container flex items-center justify-center text-on-primary-container neon-glow transition-all duration-300" title="New Rule">
+<span class="material-symbols-outlined">add</span>
+</button>
+<a class="text-on-surface-variant opacity-60 hover:text-primary-fixed hover:opacity-100 transition-all duration-300 scale-110 transition-transform duration-200 flex flex-col items-center gap-1 group" href="#">
+<span class="material-symbols-outlined group-hover:scale-110 transition-transform">settings</span>
+</a>
+<a class="text-on-surface-variant opacity-60 hover:text-primary-fixed hover:opacity-100 transition-all duration-300 scale-110 transition-transform duration-200 flex flex-col items-center gap-1 group" href="#">
+<span class="material-symbols-outlined group-hover:scale-110 transition-transform">logout</span>
+</a>
+</div>
+</nav>
+<!-- Main Content Area -->
+<main class="flex-1 md:ml-sidebar-width min-h-screen flex flex-col">
+<!-- TopAppBar -->
+<header class="flex justify-between items-center px-container-padding w-full bg-surface/10 backdrop-blur-md border-b border-white/5 fixed top-0 right-0 left-sidebar-width h-16 z-40 focus-within:ring-1 focus-within:ring-primary/40 transition-colors">
+<div class="flex items-center gap-8">
+<h1 class="font-headline-lg text-headline-lg font-bold text-on-surface tracking-tight">TorrentFlow</h1>
+<nav class="hidden lg:flex gap-6">
+<a class="text-on-surface-variant hover:text-primary-fixed-dim transition-colors font-title-md text-title-md" href="#">Monitoring</a>
+<a class="text-on-surface-variant hover:text-primary-fixed-dim transition-colors font-title-md text-title-md" href="#">Bandwidth</a>
+<a class="text-on-surface-variant hover:text-primary-fixed-dim transition-colors font-title-md text-title-md" href="#">Peers</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<div class="relative hidden sm:block">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-sm">search</span>
+<input class="bg-[#05070A]/40 border-none rounded-full py-1.5 pl-9 pr-4 text-sm focus:ring-1 focus:ring-primary/50 text-on-surface placeholder-on-surface-variant/50 w-64 shadow-[inset_0_2px_4px_rgba(0,0,0,0.4)]" placeholder="Search releases..." type="text">
+</div>
+<button class="bg-gradient-to-r from-primary-container to-secondary-container text-on-primary-container px-4 py-1.5 rounded-full font-label-sm text-label-sm neon-glow transition-shadow hidden sm:block">
+                    Add Magnet
+                </button>
+<button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined">person_outline</span>
+</button>
+</div>
+</header>
+<!-- Canvas -->
+<div class="pt-24 px-container-padding pb-margin-lg max-w-[1600px] mx-auto w-full flex-1 flex flex-col lg:flex-row gap-gutter-md">
+<!-- Left Column: Releases -->
+<div class="flex-1 flex flex-col gap-4">
+<div class="flex justify-between items-end mb-2">
+<div>
+<h2 class="font-headline-lg text-headline-lg text-on-surface font-bold">Latest Releases</h2>
+<p class="text-on-surface-variant text-sm mt-1">Aggregated feeds from connected trackers.</p>
+</div>
+<div class="flex gap-2">
+<button class="glass-card px-3 py-1.5 rounded-lg text-sm text-primary flex items-center gap-2 hover:bg-white/5 transition-colors">
+<span class="material-symbols-outlined text-sm">filter_list</span> Filter
+                        </button>
+</div>
+</div>
+<!-- Release Item: Game -->
+<div class="glass-card rounded-xl p-4 flex flex-col sm:flex-row gap-4 items-start sm:items-center neon-glow transition-shadow group relative overflow-hidden">
+<div class="w-12 h-12 rounded-lg bg-surface-container-highest flex items-center justify-center shrink-0 border border-white/5">
+<span class="material-symbols-outlined text-secondary-fixed-dim" style="font-variation-settings: 'FILL' 1;">sports_esports</span>
+</div>
+<div class="flex-1 min-w-0">
+<h3 class="font-title-md text-title-md text-on-surface truncate group-hover:text-primary transition-colors">Cyberpunk 2077: Phantom Liberty [v 2.12 + DLCs]</h3>
+<div class="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-sm text-on-surface-variant">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">public</span> 1337x</span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">sd_storage</span> 84.5 GB</span>
+<span class="text-secondary-fixed flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">arrow_upward</span> 12.4k</span>
+<span class="text-tertiary flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">arrow_downward</span> 842</span>
+<span class="text-xs bg-surface-container-highest px-2 py-0.5 rounded text-on-surface/70 uppercase">Repack</span>
+</div>
+</div>
+<div class="flex items-center gap-2 mt-2 sm:mt-0 shrink-0">
+<button class="w-9 h-9 rounded-full bg-surface-container-highest flex items-center justify-center text-on-surface hover:text-secondary-fixed hover:bg-white/10 transition-colors border border-white/5" title="Search on Steam">
+<span class="material-symbols-outlined text-[20px]">sports_esports</span> <!-- Fallback for Steam icon -->
+</button>
+<button class="w-9 h-9 rounded-full bg-gradient-to-br from-primary-container to-secondary-container flex items-center justify-center text-on-primary-container hover:shadow-[0_0_10px_rgba(173,198,255,0.4)] transition-all" title="Add Magnet">
+<span class="material-symbols-outlined text-[20px]">link</span>
+</button>
+</div>
+</div>
+<!-- Release Item: Movie -->
+<div class="glass-card rounded-xl p-4 flex flex-col sm:flex-row gap-4 items-start sm:items-center neon-glow transition-shadow group relative overflow-hidden">
+<div class="w-12 h-12 rounded-lg bg-surface-container-highest flex items-center justify-center shrink-0 border border-white/5">
+<span class="material-symbols-outlined text-primary-fixed-dim" style="font-variation-settings: 'FILL' 1;">movie</span>
+</div>
+<div class="flex-1 min-w-0">
+<h3 class="font-title-md text-title-md text-on-surface truncate group-hover:text-primary transition-colors">Dune: Part Two (2024) 2160p 4K WEB-DL DD5.1 HDR</h3>
+<div class="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-sm text-on-surface-variant">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">public</span> RARBG</span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">sd_storage</span> 22.1 GB</span>
+<span class="text-secondary-fixed flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">arrow_upward</span> 8.2k</span>
+<span class="text-tertiary flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">arrow_downward</span> 1.1k</span>
+<span class="text-xs bg-surface-container-highest px-2 py-0.5 rounded text-on-surface/70 uppercase">2160p</span>
+</div>
+</div>
+<div class="flex items-center gap-2 mt-2 sm:mt-0 shrink-0">
+<button class="w-9 h-9 rounded-full bg-gradient-to-br from-primary-container to-secondary-container flex items-center justify-center text-on-primary-container hover:shadow-[0_0_10px_rgba(173,198,255,0.4)] transition-all" title="Add Magnet">
+<span class="material-symbols-outlined text-[20px]">link</span>
+</button>
+</div>
+</div>
+<!-- Release Item: Software -->
+<div class="glass-card rounded-xl p-4 flex flex-col sm:flex-row gap-4 items-start sm:items-center neon-glow transition-shadow group relative overflow-hidden">
+<div class="w-12 h-12 rounded-lg bg-surface-container-highest flex items-center justify-center shrink-0 border border-white/5">
+<span class="material-symbols-outlined text-tertiary-fixed-dim" style="font-variation-settings: 'FILL' 1;">terminal</span>
+</div>
+<div class="flex-1 min-w-0">
+<h3 class="font-title-md text-title-md text-on-surface truncate group-hover:text-primary transition-colors">Adobe Creative Cloud 2024 Master Collection</h3>
+<div class="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-sm text-on-surface-variant">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">public</span> RuTracker</span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">sd_storage</span> 31.4 GB</span>
+<span class="text-secondary-fixed flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">arrow_upward</span> 4.5k</span>
+<span class="text-tertiary flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">arrow_downward</span> 302</span>
+</div>
+</div>
+<div class="flex items-center gap-2 mt-2 sm:mt-0 shrink-0">
+<button class="w-9 h-9 rounded-full bg-gradient-to-br from-primary-container to-secondary-container flex items-center justify-center text-on-primary-container hover:shadow-[0_0_10px_rgba(173,198,255,0.4)] transition-all" title="Add Magnet">
+<span class="material-symbols-outlined text-[20px]">link</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Right Column: Sidebar Widgets -->
+<div class="w-full lg:w-80 flex flex-col gap-4 mt-8 lg:mt-0 shrink-0">
+<!-- Tracker Status Widget -->
+<div class="glass-card rounded-xl p-5">
+<h3 class="font-title-md text-title-md text-on-surface font-semibold mb-4 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">router</span> Tracker Status
+                    </h3>
+<div class="flex flex-col gap-3"><div class="flex items-center justify-between p-2 rounded-full bg-surface-container-highest/50 border border-white/5 px-4">
+<div class="flex items-center gap-3">
+<div class="w-2 h-2 rounded-full bg-secondary-fixed glow-active"></div>
+<span class="text-sm font-medium">1337x</span>
+</div>
+<span class="text-xs text-secondary-fixed font-label-sm">45ms</span>
+</div>
+<div class="flex items-center justify-between p-2 rounded-full bg-surface-container-highest/50 border border-white/5 px-4">
+<div class="flex items-center gap-3">
+<div class="w-2 h-2 rounded-full bg-secondary-fixed glow-active"></div>
+<span class="text-sm font-medium">RARBG (Proxy)</span>
+</div>
+<span class="text-xs text-secondary-fixed font-label-sm">120ms</span>
+</div>
+<div class="flex items-center justify-between p-2 rounded-full bg-surface-container-highest/50 border border-white/5 px-4 opacity-80">
+<div class="flex items-center gap-3">
+<div class="w-2 h-2 rounded-full bg-error"></div>
+<span class="text-sm font-medium">Nyaa.si</span>
+</div>
+<span class="text-xs text-error font-label-sm">Offline</span>
+</div>
+<div class="flex items-center justify-between p-2 rounded-full bg-surface-container-highest/50 border border-white/5 px-4">
+<div class="flex items-center gap-3">
+<div class="w-2 h-2 rounded-full bg-secondary-fixed glow-active"></div>
+<span class="text-sm font-medium">RuTracker</span>
+</div>
+<span class="text-xs text-secondary-fixed font-label-sm">85ms</span>
+</div></div>
+<button class="w-full mt-4 py-2 border border-white/10 rounded-lg text-sm text-on-surface-variant hover:text-primary hover:bg-white/5 transition-colors">
+                        Manage Trackers
+                    </button>
+</div>
+</div>
+</div>
+</main>
+
+
+</body></html>

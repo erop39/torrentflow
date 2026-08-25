@@ -1,0 +1,45 @@
+services:
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      TORRENTFLOW_ENV: production
+      TORRENTFLOW_DATABASE_URL: sqlite+aiosqlite:////data/torrentflow.db
+    volumes:
+      - torrentflow-data:/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/ready').read()"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    ports:
+      - "4175:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  backup:
+    build: ./backend
+    restart: unless-stopped
+    command: ["python", "-m", "app.backup"]
+    environment:
+      TORRENTFLOW_DATABASE_URL: sqlite+aiosqlite:////data/torrentflow.db
+      TORRENTFLOW_BACKUP_DIR: /backups
+      TORRENTFLOW_BACKUP_RETENTION: ${TORRENTFLOW_BACKUP_RETENTION:-7}
+      TORRENTFLOW_BACKUP_INTERVAL_SECONDS: ${TORRENTFLOW_BACKUP_INTERVAL_SECONDS:-86400}
+    volumes:
+      - torrentflow-data:/data:ro
+      - torrentflow-backups:/backups
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  torrentflow-data:
+  torrentflow-backups:
