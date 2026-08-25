@@ -18,7 +18,8 @@
 - Exposed Telegram token was redacted from all reachable Git history and rewritten `main` was force-pushed to GitHub.
 - Runtime schema creation was removed in favour of an idempotent Alembic startup upgrade; qBittorrent/Telegram adapters and rule matching now have 26 automated backend tests.
 - Multi-architecture GHCR build CI and a Synology deployment runbook, including named-volume and bind-mount permissions, are complete.
-- Smart Auto-Add constraints, uploader lists, TorrentLeech flags, qBittorrent targets, per-feed proxy, disk alerts, and secret-free JSON/YAML configuration backup are implemented.
+- Smart Auto-Add constraints, uploader lists, TorrentLeech flags, qBittorrent targets, per-feed proxy, disk alerts, and JSON/YAML configuration backup are implemented.
+- README, changelog, and TODO were reconciled with current functionality and review findings; backend verification is at 33 tests.
 
 ## Next
 
