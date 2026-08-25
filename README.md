@@ -2,7 +2,7 @@
 
 TorrentFlow is a LAN-first control room for RSS/Atom releases on a NAS. It scans feeds, evaluates priority rules, records decisions, can notify via Telegram, and can add matching releases to qBittorrent.
 
-> Current state: active MVP development. The dashboard, RSS/rules/audit pipeline, optional integrations, and Synology-oriented Docker deployment are ready for verification.
+> Current state: active MVP development. The dashboard, automation pipeline, configuration backup, and Synology-oriented Docker deployment are ready for local Compose and live-integration verification.
 
 ## What works
 
@@ -16,7 +16,8 @@ TorrentFlow is a LAN-first control room for RSS/Atom releases on a NAS. It scans
 - Audit events for discoveries and integration outcomes.
 - React dashboard with API-bound RSS feeds, Releases, Rules, Downloads, History, Notifications, and Settings screens.
 - Docker Compose deployment with Alembic startup migrations, health checks, and rotating SQLite backups.
-- Disk-space health monitoring and transition-based Telegram alerts; secret-free JSON/YAML configuration export/import.
+- Disk-space health monitoring and transition-based Telegram alerts.
+- Configuration backup: JSON export and JSON/YAML import for persisted feeds, rules, and categories. The Settings UI imports as a safe merge; destructive replacement is available only through the API with explicit confirmation.
 
 ## Architecture
 
@@ -43,7 +44,7 @@ $env:TORRENTFLOW_ADMIN_PASSWORD = "choose-a-strong-password"
 $env:TORRENTFLOW_SESSION_SECRET = "use-a-long-random-value"
 ```
 
-Optional qBittorrent and Telegram variables are documented in `backend/.env.example`.
+Optional qBittorrent and Telegram variables, plus the disk-free alert threshold, are documented in `backend/.env.example`.
 
 ### 2. Apply migrations and start the API
 
@@ -69,11 +70,17 @@ Open `http://127.0.0.1:4175` and sign in with `TORRENTFLOW_ADMIN_PASSWORD`.
 
 ## First workflow
 
-1. Open **RSS feeds** and add the full RSS URL.
-2. Open **Rules** and create a rule with category, keywords, minimum seeds, action, and priority.
+1. Open **RSS feeds** and add the full RSS URL. Select **TorrentLeech** when applicable; an HTTP(S) or SOCKS5 proxy can be assigned to that feed.
+2. Open **Rules** and create a rule with category, keywords, minimum seeds, action, and priority. Expand **Automation gates and qBittorrent target** for freeleech/double-upload, size, uploader, qB category, and save-path constraints.
 3. Click **Check now** on a feed.
 4. Inspect persistent outcomes in **Releases**.
 5. For `auto_add` or `both`, configure qBittorrent first. For `notify` or `both`, configure Telegram first.
+
+## Disk alerts and configuration backup
+
+- `TORRENTFLOW_DISK_FREE_THRESHOLD_PERCENT` defaults to `10`. The scheduler records a `disk.low` audit event and sends Telegram only when free space first falls below the threshold; it records a recovery event after space returns.
+- In **Settings**, export the portable configuration as JSON or import a JSON/YAML file. Import merges records by name and never imports environment variables such as Telegram, qBittorrent, or session credentials.
+- Do not put a password in a per-feed proxy URL. The URL is stored as feed configuration and is currently included in configuration exports; use an unauthenticated local proxy endpoint instead.
 
 ## Synology / Docker Compose deployment
 
@@ -110,7 +117,7 @@ Test restoration on a copy before relying on it for incident recovery.
 | `TORRENTFLOW_TELEGRAM_CHAT_ID` | For Telegram | Target chat ID |
 | `TORRENTFLOW_DISK_FREE_THRESHOLD_PERCENT` | No (10) | Alert when the data volume has less free space than this percentage |
 
-Never put passwords, RSS keys, tokens, or database URLs in committed files, screenshots, or the Memory Bank.
+Never put passwords, RSS keys, tokens, proxy credentials, or database URLs in committed files, screenshots, or the Memory Bank.
 
 ## Verification
 
@@ -133,5 +140,6 @@ npm run build
 
 ## Roadmap
 
-- Final UI QA on desktop and mobile, plus a live check against the administrator's qBittorrent and Telegram instances.
+- Final UI QA on desktop and mobile, local Compose validation, plus a live check against the administrator's qBittorrent and Telegram instances.
+- Resolve the documented security and coverage follow-ups in [docs/todo.md](docs/todo.md) before exposing the instance beyond a trusted LAN.
 - Windows tray client in a later phase.

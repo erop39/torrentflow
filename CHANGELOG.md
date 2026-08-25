@@ -9,7 +9,7 @@
 - Smart Auto-Add Rules: freeleech/double-upload gates, maximum size, uploader allow/block lists, qBittorrent category and save-path mapping, and Alembic migration `20260826_07`.
 - TorrentLeech RSS metadata extraction (uploader, freeleech, double-upload, size), optional HTTP(S)/SOCKS5 proxy per feed, and qBittorrent mapped auto-add targets.
 - Disk-space monitoring of the application data volume with a configurable free-space threshold, health output, audit events, and transition-based Telegram alerts.
-- Secret-free versioned configuration export/import for feeds, rules, and categories in JSON or YAML; destructive replacement is protected by explicit API confirmation.
+- Versioned configuration backup: JSON export and JSON/YAML import for persisted feeds, rules, and categories; destructive replacement is protected by explicit API confirmation.
 - Добавлен multi-arch GitHub Actions build для `linux/amd64` и `linux/arm64`: pull request проверяет сборку, а `main` и version tags публикуют backend/frontend images в GHCR.
 - Добавлена подробная инструкция развёртывания на Synology Container Manager: GHCR images, managed volumes и bind mounts, права `root:root`/`0700`, backups, восстановление, upgrades, HTTPS и troubleshooting.
 - Расширено backend-покрытие до 26 тестов: edge cases matching и изолированные HTTP-проверки qBittorrent/Telegram адаптеров.
@@ -48,6 +48,7 @@
 
 ### Changed
 
+- README and backlog now describe Smart Rules, TorrentLeech/proxy feeds, disk monitoring, configuration backup, and their remaining security/coverage limits accurately.
 - API больше не создаёт SQLite-схему через `create_all`: при каждом старте применяется идемпотентный `alembic upgrade head`, поэтому local и production используют один versioned migration lifecycle.
 - Аудит хранения подтвердил, что SQLite не содержит passkeys, cookies или integration credentials: session cookie хранит только подписанный признак admin, а все секреты остаются в environment variables.
 - Удалён случайно закоммиченный Telegram token из design-прототипа и переписана Git history; token требует отзыва и перевыпуска в BotFather.

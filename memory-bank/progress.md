@@ -22,4 +22,5 @@
 
 ## Next
 
+- Fix proxy credential persistence/export before using authenticated proxies; then add local HTTP/SOCKS adapter integration coverage and validate feed adapter types at API input.
 - Install/start Docker Desktop, run `scripts/setup-docker-env.sh` to create `.env`, then run Docker Compose end-to-end and live qBittorrent/Telegram tests.

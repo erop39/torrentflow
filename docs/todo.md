@@ -5,29 +5,47 @@
 
 ---
 
-## Высокий приоритет (желательно в v1 или сразу после)
+## Выполнено в текущем MVP
 
-- [ ] **Smart Auto-Add Rules**  
-  Отдельный action `auto_add` (или `both`) с условиями: freeleech only, min seeds, max size и т.д.  
-  Сейчас в плане есть только notify + ручная кнопка.
+- [x] **Smart Auto-Add Rules**
+  `auto_add` и `both` работают с min seeds, freeleech, double upload и максимальным размером.
 
-- [ ] **Uploader whitelist / blacklist**  
-  Фильтр по имени аплоадера. На TL это почти must-have.
+- [x] **Uploader whitelist / blacklist**
+  CSV allow/block lists сравниваются без учёта регистра; block list имеет приоритет.
 
-- [ ] **Freeleech / Double Upload detection**  
-  В адаптере TorrentLeech вытаскивать эти флаги и уметь фильтровать по ним.
+- [x] **Freeleech / Double Upload detection**
+  TorrentLeech adapter нормализует uploader, freeleech, double-upload и размер для matching.
 
-- [ ] **qb_category + save_path mapping** в правиле  
-  Чтобы разные типы релизов летели в разные категории/папки qB.
+- [x] **qb_category + save_path mapping** в правиле
+  Smart rule передаёт `category` и `savepath` в qBittorrent при auto-add.
 
-- [ ] **Proxy / SOCKS5 support per feed**  
-  Многие ходят на трекеры через VPN/прокси. Нужна поддержка на уровне адаптера.
+- [x] **Proxy / SOCKS5 support per feed**
+  Поддерживаются HTTP(S), SOCKS5 и SOCKS5H proxy URL; proxy назначается конкретному feed.
 
-- [ ] **Disk space monitoring + alerts**  
-  Следить за свободным местом на volume и слать уведомление при низком пороге.
+- [x] **Disk space monitoring + alerts**
+  Проверяется data volume, статус виден в health/Settings, audit и Telegram отправляются при смене состояния.
 
-- [ ] **Export / Import всего конфига** (feeds + rules + settings) в YAML/JSON  
-  Чтобы можно было быстро восстановить после переустановки.
+- [x] **Export / Import persisted config** (feeds + rules + categories)
+  JSON export и JSON/YAML import; UI делает безопасный merge, API replace требует явного подтверждения.
+
+---
+
+## Высокий приоритет — закрыть до расширения доступа
+
+- [ ] **Запретить proxy credentials в SQLite и export**
+  Сейчас `user:password@` в proxy URL можно сохранить и выгрузить вместе с конфигурацией. Нужна валидация без userinfo или отдельное environment-only хранение.
+
+- [ ] **Определить и реализовать модель защищённых tracker credentials**
+  Сейчас passkey/cookies в БД не существуют: RSS URL и integration credentials не должны содержать секретов. Если tracker потребует cookie/passkey, добавить зашифрованное at-rest хранение с ротацией ключа, а не хранить значения в feed URL.
+
+- [ ] **Добавить настоящий adapter integration suite**
+  Нужны локальный HTTP RSS/TorrentLeech fixture, проверка SOCKS transport и migration/startup lifecycle; существующие тесты покрывают matching и HTTP-моки.
+
+- [ ] **Валидировать adapter type при создании feed**
+  Неверный adapter сейчас сохранится и упадёт при первом scan вместо `422`.
+
+- [ ] **Расширить export/import до явного policy для runtime settings**
+  Решить, какие non-secret settings (например, disk threshold) должны быть переносимы, сохранив credentials только в environment.
 
 ---
 
@@ -66,13 +84,12 @@
 
 ---
 
-## Технический долг / Улучшения
+## Технический долг — выполнено
 
-- [ ] Нормальные миграции (Alembic) вместо create_all
-- [ ] Шифрование cookies/passkey в БД
-- [ ] Unit + integration тесты на адаптеры и matching
-- [ ] Multi-arch Docker build в CI
-- [ ] Документация по деплою на Synology (включая volume permissions)
+- [x] Нормальные миграции (Alembic) вместо `create_all`; runtime применяет `alembic upgrade head`.
+- [x] Unit-тесты matching и HTTP-mock coverage qBittorrent/Telegram; полноценный adapter integration suite остаётся выше.
+- [x] Multi-arch Docker build в CI для `linux/amd64` и `linux/arm64`.
+- [x] Документация по деплою на Synology, включая named volumes и bind-mount permissions.
 
 ---
 
