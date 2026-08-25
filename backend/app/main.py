@@ -15,8 +15,9 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
 
-from .database import SessionLocal, engine, get_session
-from .models import AuditEvent, Base, Category, Feed, Rule, StoredRelease
+from .database import SessionLocal, get_session
+from .models import AuditEvent, Category, Feed, Rule, StoredRelease
+from .migrations import upgrade_database
 from .rss import fetch_entries
 from .matching import match_rule
 from .integrations import qbit_add, qbit_configured, qbit_downloads, telegram_configured, telegram_send
@@ -36,14 +37,10 @@ def validate_runtime_configuration() -> None:
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     validate_runtime_configuration()
-    if not IS_PRODUCTION:
-        async with engine.begin() as connection:
-            await connection.run_sync(Base.metadata.create_all)
-        async with SessionLocal() as session:
-            for name, color in (("series", "#ad8cff"), ("linux", "#69e5a5")):
-                if await session.scalar(select(Category).where(Category.name == name)) is None:
-                    session.add(Category(name=name, color=color, is_interesting=True))
-            await session.commit()
+    # Keep local development and production on the same, versioned schema
+    # lifecycle.  Docker also performs this command before the API starts;
+    # Alembic upgrades are idempotent, so the second check is harmless.
+    await asyncio.to_thread(upgrade_database)
     task = None if "pytest" in sys.modules else asyncio.create_task(scheduled_scan_loop())
     try:
         yield

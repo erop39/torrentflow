@@ -83,6 +83,8 @@ For Windows Git Bash or a NAS shell, [`scripts/setup-docker-env.sh`](scripts/set
 
 Do not manually copy the live SQLite database while TorrentFlow is running. The backup service uses SQLite's backup API so its snapshots are consistent.
 
+For the complete Container Manager procedure—including multi-architecture GHCR images, volume ownership, bind-mount permissions, HTTPS, upgrades, and troubleshooting—see [Synology deployment](docs/SYNOLOGY_DEPLOYMENT.md). The default Docker-managed volumes avoid Synology UID/GID issues; do not delete them during upgrades.
+
 ### Restoring a backup
 
 1. Stop the project in Container Manager so SQLite is not open.
