@@ -15,6 +15,7 @@
 - Root README with local setup, configuration, verification, and MVP status.
 - Backend tests (17) and frontend production build pass at the latest implementation checkpoint.
 - Reusable `scripts/setup-docker-env.sh` wizard is ready for hidden-input local `.env` setup before Docker Compose deployment.
+- Exposed Telegram token was redacted from all reachable Git history; rewritten `main` was force-pushed to GitHub and is synchronized at `61419f4`.
 
 ## Next
 
