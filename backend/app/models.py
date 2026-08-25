@@ -32,6 +32,13 @@ class Rule(Base):
     action: Mapped[str] = mapped_column(String(16), default="notify")
     priority: Mapped[int] = mapped_column(Integer, default=100)
     category: Mapped[str] = mapped_column(String(32), default="series")
+    freeleech_only: Mapped[bool] = mapped_column(Boolean, default=False)
+    double_upload_only: Mapped[bool] = mapped_column(Boolean, default=False)
+    max_size_bytes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    uploader_whitelist: Mapped[str] = mapped_column(Text, default="")
+    uploader_blacklist: Mapped[str] = mapped_column(Text, default="")
+    qb_category: Mapped[str] = mapped_column(String(255), default="")
+    save_path: Mapped[str] = mapped_column(Text, default="")
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 

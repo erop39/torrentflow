@@ -129,6 +129,13 @@ class RuleCreate(BaseModel):
     action: Literal["notify", "auto_add", "both"] = "notify"
     priority: int = Field(default=100, ge=0)
     category: str = Field(default="series", min_length=1, max_length=32)
+    freeleech_only: bool = False
+    double_upload_only: bool = False
+    max_size_bytes: int | None = Field(default=None, gt=0)
+    uploader_whitelist: str = Field(default="", max_length=4096)
+    uploader_blacklist: str = Field(default="", max_length=4096)
+    qb_category: str = Field(default="", max_length=255)
+    save_path: str = Field(default="", max_length=4096)
 
 
 class RuleResponse(RuleCreate):
