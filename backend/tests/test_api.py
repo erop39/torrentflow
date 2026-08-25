@@ -17,9 +17,10 @@ def test_health_contract() -> None:
         response = client.get("/api/health")
     assert response.status_code == 200
     body = response.json()
-    assert len(body["services"]) == 4
+    assert len(body["services"]) == 5
     assert {item["status"] for item in body["services"]} <= {"healthy", "degraded", "unconfigured"}
     assert {item["name"] for item in body["services"] if item["status"] == "unconfigured"} == {"qBittorrent", "Telegram"}
+    assert next(item for item in body["services"] if item["name"] == "Disk")["status"] in {"healthy", "degraded"}
 
 
 def test_readiness_checks_database() -> None:
@@ -81,6 +82,18 @@ def test_create_rule_contract() -> None:
         response = client.post("/api/rules", json={"name": f"Linux {uuid4()}", "include_keywords": "ubuntu,debian", "min_seeds": 5, "action": "notify", "priority": 10})
     assert response.status_code == 201
     assert response.json()["min_seeds"] == 5
+
+
+def test_smart_rule_and_per_feed_proxy_contract() -> None:
+    with TestClient(app) as client:
+        login(client)
+        feed = client.post("/api/feeds", json={"name": f"TL {uuid4()}", "url": "https://example.test/rss", "adapter_type": "torrentleech", "proxy_url": "socks5://127.0.0.1:1080"})
+        rule = client.post("/api/rules", json={"name": f"Smart {uuid4()}", "freeleech_only": True, "double_upload_only": True, "max_size_bytes": 5_000_000_000, "uploader_whitelist": "Trusted,Other", "uploader_blacklist": "Blocked", "qb_category": "movies", "save_path": "/downloads/movies"})
+    assert feed.status_code == 201
+    assert feed.json()["proxy_url"] == "socks5://127.0.0.1:1080"
+    assert rule.status_code == 201
+    assert rule.json()["freeleech_only"] is True
+    assert rule.json()["qb_category"] == "movies"
 
 
 def test_rule_rejects_unknown_action() -> None:
@@ -170,6 +183,46 @@ def test_auto_add_and_telegram_events_are_audited(monkeypatch) -> None:
     assert calls[1][0] == "telegram"
     event_types = {event["event_type"] for event in audit.json()}
     assert {"release.discovered", "qbit.added", "telegram.sent"} <= event_types
+
+
+def test_smart_auto_add_filters_metadata_and_maps_qb_target(monkeypatch) -> None:
+    external_id = f"https://example.test/smart/{uuid4()}"
+    calls: list[tuple[str, dict[str, str]]] = []
+
+    async def fake_fetch_entries(_: str) -> list[dict[str, str | int | bool]]:
+        return [{"external_id": external_id, "title": "Trusted release", "link": external_id, "seeds": 25, "freeleech": True, "double_upload": True, "size_bytes": 1000, "uploader": "Trusted"}]
+
+    async def fake_qbit_add(url: str, **kwargs: str) -> None:
+        calls.append((url, kwargs))
+
+    monkeypatch.setattr("app.main.fetch_entries", fake_fetch_entries)
+    monkeypatch.setattr("app.main.qbit_add", fake_qbit_add)
+    monkeypatch.setattr("app.main.qbit_configured", lambda: True)
+    with TestClient(app) as client:
+        login(client)
+        created = client.post("/api/rules", json={"name": f"Smart {uuid4()}", "action": "auto_add", "priority": 0, "freeleech_only": True, "double_upload_only": True, "max_size_bytes": 2000, "uploader_whitelist": "trusted", "uploader_blacklist": "blocked", "qb_category": "movies", "save_path": "/downloads/movies"})
+        feed = client.post("/api/feeds", json={"name": f"Feed {uuid4()}", "url": "https://example.test/rss"})
+        checked = client.post(f"/api/feeds/{feed.json()['id']}/check")
+    assert created.status_code == 201
+    assert checked.json()["new"] == 1
+    assert calls == [(external_id, {"category": "movies", "save_path": "/downloads/movies"})]
+
+
+def test_configuration_export_and_yaml_merge_import_are_secret_free() -> None:
+    category_name = f"export-{uuid4().hex[:8]}"
+    with TestClient(app) as client:
+        login(client)
+        assert client.post("/api/categories", json={"name": category_name, "color": "#112233", "is_interesting": True}).status_code == 201
+        assert client.post("/api/rules", json={"name": f"Export {uuid4()}", "category": category_name, "freeleech_only": True, "qb_category": "archive"}).status_code == 201
+        exported = client.get("/api/config/export")
+        assert client.post("/api/config/import", content=f"format: torrentflow/configuration\nversion: 1\ncategories:\n  - name: imported\n    color: '#445566'\n    is_interesting: false\nfeeds: []\nrules: []\n", headers={"content-type": "application/yaml"}).status_code == 200
+        categories = client.get("/api/categories")
+    assert exported.status_code == 200
+    document = exported.json()
+    assert document["format"] == "torrentflow/configuration"
+    assert any(rule["freeleech_only"] and rule["qb_category"] == "archive" for rule in document["rules"])
+    assert "TORRENTFLOW_" not in exported.text
+    assert any(category["name"] == "imported" for category in categories.json())
 
 
 def test_integration_status_and_connection_tests(monkeypatch) -> None:

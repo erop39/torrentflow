@@ -1,5 +1,4 @@
 import os
-from urllib.parse import urlencode
 
 import httpx
 
@@ -26,8 +25,18 @@ async def qbit_request(path: str, *, method: str = "GET", data: dict[str, str] |
         return response
 
 
-async def qbit_add(url: str) -> None:
-    await qbit_request("/api/v2/torrents/add", method="POST", data={"urls": url})
+async def qbit_add(url: str, *, category: str | None = None, save_path: str | None = None) -> None:
+    """Add a torrent URL, optionally applying qBittorrent category and save path."""
+    data = {"urls": url}
+    if category is not None:
+        category = category.strip()
+        if category:
+            data["category"] = category
+    if save_path is not None:
+        save_path = save_path.strip()
+        if save_path:
+            data["savepath"] = save_path
+    await qbit_request("/api/v2/torrents/add", method="POST", data=data)
 
 
 async def qbit_downloads() -> list[dict[str, object]]:

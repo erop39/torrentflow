@@ -3,13 +3,14 @@ export type Health = 'healthy' | 'degraded' | 'unconfigured'
 
 export type ServiceHealth = { name: string; status: Health; detail: string }
 export type HealthResponse = { services: ServiceHealth[]; checked_at: string }
-export type Feed = { id: number; name: string; url: string; adapter_type: string; enabled: boolean; interval_minutes: number }
+export type Feed = { id: number; name: string; url: string; adapter_type: string; proxy_url: string | null; enabled: boolean; interval_minutes: number }
 export type FeedCheckResult = { discovered: number; new: number; items: Array<{ title: string; status: string; rule_name: string | null; category: string; seeds: number }> }
 export type IntegrationStatus = { qbit_configured: boolean; telegram_configured: boolean }
 export type Category = { id: number; name: string; color: string; is_interesting: boolean }
 export type DownloadItem = { name: string; progress: number; state: string; dlspeed: number }
 export type AuditEvent = { id: number; event_type: string; message: string; created_at: string }
-export type Rule = { id: number; name: string; include_keywords: string; min_seeds: number; action: 'notify' | 'auto_add' | 'both'; priority: number; category: string; enabled: boolean }
+export type Rule = { id: number; name: string; include_keywords: string; min_seeds: number; action: 'notify' | 'auto_add' | 'both'; priority: number; category: string; freeleech_only: boolean; double_upload_only: boolean; max_size_bytes: number | null; uploader_whitelist: string; uploader_blacklist: string; qb_category: string; save_path: string; enabled: boolean }
+export type DiskStatus = { path: string; threshold_percent: number; state: 'healthy' | 'low' | 'unavailable'; total_bytes: number | null; used_bytes: number | null; free_bytes: number | null; free_percent: number | null; detail: string }
 
 export type Release = {
   id: number

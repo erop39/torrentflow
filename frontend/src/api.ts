@@ -1,4 +1,4 @@
-import type { AuditEvent, Category, DownloadItem, Feed, FeedCheckResult, HealthResponse, IntegrationStatus, Release, Rule } from './types'
+import type { AuditEvent, Category, DiskStatus, DownloadItem, Feed, FeedCheckResult, HealthResponse, IntegrationStatus, Release, Rule } from './types'
 
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:8000'
 
@@ -25,16 +25,28 @@ async function patchJson<T>(path: string, body: unknown): Promise<T> {
   return response.json() as Promise<T>
 }
 
+async function getText(path: string): Promise<string> {
+  const response = await fetch(`${API_URL}${path}`, { credentials: 'include' })
+  if (!response.ok) throw new Error(`Request failed with ${response.status}`)
+  return response.text()
+}
+
+async function sendText<T>(path: string, body: string, contentType: string): Promise<T> {
+  const response = await fetch(`${API_URL}${path}`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': contentType }, body })
+  if (!response.ok) throw new Error(`Request failed with ${response.status}`)
+  return response.json() as Promise<T>
+}
+
 export const api = {
   health: (signal?: AbortSignal) => getJson<HealthResponse>('/api/health', signal),
   releases: (signal?: AbortSignal) => getJson<Release[]>('/api/releases', signal),
   feeds: (signal?: AbortSignal) => getJson<Feed[]>('/api/feeds', signal),
   me: (signal?: AbortSignal) => getJson<{ authenticated: boolean }>('/api/auth/me', signal),
   login: (password: string) => sendJson<{ authenticated: boolean }>('/api/auth/login', { password }),
-  createFeed: (payload: Pick<Feed, 'name' | 'url' | 'adapter_type' | 'interval_minutes'>) => sendJson<Feed>('/api/feeds', payload),
+  createFeed: (payload: Pick<Feed, 'name' | 'url' | 'adapter_type' | 'proxy_url' | 'interval_minutes'>) => sendJson<Feed>('/api/feeds', payload),
   deleteFeed: (feedId: number) => deleteJson(`/api/feeds/${feedId}`),
   rules: (signal?: AbortSignal) => getJson<Rule[]>('/api/rules', signal),
-  createRule: (payload: Omit<Rule, 'id' | 'enabled' | 'category'> & { category?: string }) => sendJson<Rule>('/api/rules', payload),
+  createRule: (payload: Omit<Rule, 'id' | 'enabled'>) => sendJson<Rule>('/api/rules', payload),
   categories: () => getJson<Category[]>('/api/categories'),
   createCategory: (payload: Pick<Category, 'name' | 'color' | 'is_interesting'>) => sendJson<Category>('/api/categories', payload),
   updateCategory: (categoryId: number, payload: Partial<Pick<Category, 'color' | 'is_interesting'>>) => patchJson<Category>(`/api/categories/${categoryId}`, payload),
@@ -44,4 +56,7 @@ export const api = {
   integrationStatus: () => getJson<IntegrationStatus>('/api/integrations/status'),
   testQbit: () => sendJson<{ ok: boolean }>('/api/integrations/qbittorrent/test'),
   testTelegram: () => sendJson<{ ok: boolean }>('/api/integrations/telegram/test'),
+  disk: () => getJson<DiskStatus>('/api/system/disk'),
+  exportConfiguration: () => getText('/api/config/export'),
+  importConfiguration: (document: string) => sendText<{ mode: string; feeds: number; rules: number; categories: number }>('/api/config/import', document, 'application/yaml'),
 }

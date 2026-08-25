@@ -44,6 +44,7 @@ class FeedCreate(BaseModel):
     name: str = Field(min_length=1, max_length=120)
     url: str = Field(min_length=1)
     adapter_type: str = "generic_rss"
+    proxy_url: str | None = Field(default=None, max_length=2048)
     interval_minutes: int = Field(default=30, ge=10, le=1440)
 
     @field_validator("url")
@@ -63,10 +64,29 @@ class FeedCreate(BaseModel):
             raise ValueError("RSS URL must not target a private address")
         return value
 
+    @field_validator("proxy_url")
+    @classmethod
+    def require_supported_proxy_url(cls, value: str | None) -> str | None:
+        if value is None or not value.strip():
+            return None
+        parsed = urlparse(value)
+        if parsed.scheme.lower() not in {"http", "https", "socks5", "socks5h"} or not parsed.hostname:
+            raise ValueError("Proxy URL must be an absolute http(s) or socks5 URL")
+        if parsed.query or parsed.fragment or any(character.isspace() for character in value):
+            raise ValueError("Proxy URL must not contain whitespace, a query, or a fragment")
+        try:
+            port = parsed.port
+        except ValueError as error:
+            raise ValueError("Proxy URL has an invalid port") from error
+        if port is not None and not 1 <= port <= 65535:
+            raise ValueError("Proxy URL has an invalid port")
+        return value
+
 
 class FeedUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=120)
     url: str | None = Field(default=None, min_length=1)
+    proxy_url: str | None = Field(default=None, max_length=2048)
     enabled: bool | None = None
     interval_minutes: int | None = Field(default=None, ge=10, le=1440)
 
@@ -75,12 +95,18 @@ class FeedUpdate(BaseModel):
     def require_external_http_url(cls, value: str | None) -> str | None:
         return FeedCreate.require_external_http_url(value) if value is not None else value
 
+    @field_validator("proxy_url")
+    @classmethod
+    def require_supported_proxy_url(cls, value: str | None) -> str | None:
+        return FeedCreate.require_supported_proxy_url(value)
+
 
 class FeedResponse(BaseModel):
     id: int
     name: str
     url: str
     adapter_type: str
+    proxy_url: str | None = None
     enabled: bool
     interval_minutes: int
     last_checked_at: datetime | None = None

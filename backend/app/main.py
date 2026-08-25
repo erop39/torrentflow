@@ -21,6 +21,8 @@ from .migrations import upgrade_database
 from .rss import fetch_entries
 from .matching import match_rule
 from .integrations import qbit_add, qbit_configured, qbit_downloads, telegram_configured, telegram_send
+from .configuration import ConfigurationValidationError, canonical_configuration_json, export_configuration, import_configuration
+from .monitoring import DiskSpaceState, check_disk_space
 from .schemas import AuditEventResponse, CategoryCreate, CategoryResponse, CategoryUpdate, DownloadItem, FeedCheckItem, FeedCheckResponse, FeedCreate, FeedResponse, FeedUpdate, HealthResponse, IntegrationStatus, LoginRequest, Release, ReleaseOutcome, RuleCreate, RuleResponse, ServiceHealth, ServiceStatus, SessionResponse, StoredReleaseResponse
 
 IS_PRODUCTION = os.getenv("TORRENTFLOW_ENV") == "production"
@@ -69,6 +71,18 @@ RELEASES = [
 ]
 
 logger = logging.getLogger(__name__)
+_disk_alert_active = False
+
+
+def disk_status():
+    """Inspect the configured data volume without ever exposing filesystem paths as secrets."""
+    default_path = "/data" if IS_PRODUCTION else "data"
+    try:
+        threshold = float(os.getenv("TORRENTFLOW_DISK_FREE_THRESHOLD_PERCENT", "10"))
+    except ValueError:
+        threshold = 10.0
+    threshold = min(100.0, max(0.0, threshold))
+    return check_disk_space(os.getenv("TORRENTFLOW_DISK_PATH", default_path), threshold_percent=threshold)
 
 
 async def require_admin(request: Request) -> None:
@@ -81,7 +95,12 @@ async def audit(session: AsyncSession, event_type: str, message: str, release_id
 
 
 async def scan_feed(feed: Feed, session: AsyncSession) -> FeedCheckResponse:
-    entries = await fetch_entries(feed.url)
+    fetch_options: dict[str, str] = {}
+    if feed.proxy_url:
+        fetch_options["proxy_url"] = feed.proxy_url
+    if feed.adapter_type != "generic_rss":
+        fetch_options["adapter_type"] = feed.adapter_type
+    entries = await fetch_entries(feed.url, **fetch_options)
     rules = list((await session.scalars(select(Rule).order_by(Rule.priority, Rule.id))).all())
     rule_names = {rule.id: rule.name for rule in rules}
     created = 0
@@ -91,7 +110,13 @@ async def scan_feed(feed: Feed, session: AsyncSession) -> FeedCheckResponse:
         existing = await session.scalar(select(StoredRelease).where(StoredRelease.external_id == external_id))
         if existing is None:
             seeds = int(entry.get("seeds", 0))
-            matched = match_rule(str(entry["title"]), seeds, rules)
+            matched = match_rule(
+                str(entry["title"]), seeds, rules,
+                freeleech=entry.get("freeleech") is True,
+                double_upload=entry.get("double_upload") is True,
+                size_bytes=entry.get("size_bytes") if isinstance(entry.get("size_bytes"), int) else None,
+                uploader=str(entry.get("uploader") or ""),
+            )
             action = matched.action if matched else "ignored"
             existing = StoredRelease(feed_id=feed.id, external_id=external_id, title=str(entry["title"]), link=str(entry["link"]), seeds=seeds, category=matched.category if matched else "series", matched_rule_id=matched.id if matched else None, status=action)
             session.add(existing)
@@ -100,7 +125,8 @@ async def scan_feed(feed: Feed, session: AsyncSession) -> FeedCheckResponse:
             await audit(session, "release.discovered", f"{feed.name}: {existing.title}", existing.id)
             if action in {"auto_add", "both"} and existing.link and qbit_configured():
                 try:
-                    await qbit_add(existing.link)
+                    qbit_options = {key: value for key, value in {"category": matched.qb_category, "save_path": matched.save_path}.items() if value}
+                    await qbit_add(existing.link, **qbit_options)
                     await audit(session, "qbit.added", existing.title, existing.id)
                 except Exception as error:
                     await audit(session, "qbit.failed", f"{existing.title}: {error}", existing.id)
@@ -118,10 +144,17 @@ async def scan_feed(feed: Feed, session: AsyncSession) -> FeedCheckResponse:
 
 async def scan_due_feeds_once() -> None:
     try:
-        async with SessionLocal() as session:
+        # A feed scan may roll back after a network or integration failure. Work
+        # with a fresh session per feed so one rollback cannot expire or discard
+        # another due feed in the same scheduler pass.
+        async with SessionLocal() as listing_session:
             now = datetime.now(UTC)
-            feeds = list((await session.scalars(select(Feed).where(Feed.enabled.is_(True)))).all())
-            for feed in feeds:
+            feed_ids = list((await listing_session.scalars(select(Feed.id).where(Feed.enabled.is_(True)))).all())
+        for feed_id in feed_ids:
+            async with SessionLocal() as session:
+                feed = await session.get(Feed, feed_id)
+                if feed is None or not feed.enabled:
+                    continue
                 last_checked_at = feed.last_checked_at
                 if last_checked_at is not None and last_checked_at.tzinfo is None:
                     last_checked_at = last_checked_at.replace(tzinfo=UTC)
@@ -130,11 +163,31 @@ async def scan_due_feeds_once() -> None:
                 try:
                     await scan_feed(feed, session)
                 except Exception as error:
-                    feed_id = feed.id
                     await session.rollback()
                     logger.warning("Scheduled RSS scan failed for feed %s: %s", feed_id, error)
     except Exception as error:
         logger.exception("RSS scheduler iteration failed: %s", error)
+    await check_disk_space_and_alert()
+
+
+async def check_disk_space_and_alert() -> None:
+    """Record and notify only on low-space state changes, avoiding scheduler spam."""
+    global _disk_alert_active
+    status_info = disk_status()
+    is_alerting = status_info.state is not DiskSpaceState.HEALTHY
+    if is_alerting == _disk_alert_active:
+        return
+    _disk_alert_active = is_alerting
+    event_type = "disk.low" if is_alerting else "disk.recovered"
+    message = f"Disk monitor: {status_info.detail}"
+    async with SessionLocal() as session:
+        await audit(session, event_type, message)
+        if telegram_configured():
+            try:
+                await telegram_send(f"TorrentFlow {event_type}: {status_info.detail}")
+            except Exception as error:
+                await audit(session, "telegram.failed", f"Disk alert: {error}")
+        await session.commit()
 
 
 async def scheduled_scan_loop() -> None:
@@ -165,12 +218,14 @@ async def me(request: Request) -> SessionResponse:
 @app.get("/api/health", response_model=HealthResponse, tags=["system"])
 async def get_health(session: AsyncSession = Depends(get_session)) -> HealthResponse:
     rule_count = len(list((await session.scalars(select(Rule).where(Rule.enabled.is_(True)))).all()))
+    disk = disk_status()
     return HealthResponse(
         services=[
             ServiceHealth(name="RSS", status=ServiceStatus.HEALTHY, detail="Scheduler active"),
             ServiceHealth(name="Rules", status=ServiceStatus.HEALTHY, detail=f"{rule_count} active rules"),
             ServiceHealth(name="qBittorrent", status=ServiceStatus.HEALTHY if qbit_configured() else ServiceStatus.UNCONFIGURED, detail="Configured; test connection in Settings" if qbit_configured() else "Not configured"),
             ServiceHealth(name="Telegram", status=ServiceStatus.HEALTHY if telegram_configured() else ServiceStatus.UNCONFIGURED, detail="Configured; test connection in Settings" if telegram_configured() else "Not configured"),
+            ServiceHealth(name="Disk", status=ServiceStatus.HEALTHY if disk.state is DiskSpaceState.HEALTHY else ServiceStatus.DEGRADED, detail=disk.detail),
         ],
         checked_at=datetime.now(UTC),
     )
@@ -284,6 +339,34 @@ async def update_category(category_id: int, payload: CategoryUpdate, session: As
     await session.commit()
     await session.refresh(category)
     return category
+
+
+@app.get("/api/config/export", tags=["configuration"])
+async def download_configuration(session: AsyncSession = Depends(get_session), _: None = Depends(require_admin)) -> Response:
+    """Download a secret-free, versioned JSON configuration document."""
+    payload = canonical_configuration_json(await export_configuration(session))
+    return Response(content=payload, media_type="application/json", headers={"Content-Disposition": "attachment; filename=torrentflow-config.json"})
+
+
+@app.post("/api/config/import", tags=["configuration"])
+async def upload_configuration(request: Request, mode: str = "merge", confirm_replace: bool = False, session: AsyncSession = Depends(get_session), _: None = Depends(require_admin)) -> dict[str, object]:
+    """Import validated JSON/YAML. Replacement requires an explicit confirmation."""
+    if mode not in {"merge", "replace"}:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="mode must be merge or replace")
+    if mode == "replace" and not confirm_replace:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="replace import requires confirm_replace=true")
+    try:
+        result = await import_configuration(session, await request.body(), mode=mode)  # type: ignore[arg-type]
+    except ConfigurationValidationError as error:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=f"Invalid configuration: {error}") from error
+    await audit(session, "configuration.imported", f"Configuration {result.mode}: {result.feeds} feeds, {result.rules} rules, {result.categories} categories")
+    await session.commit()
+    return {"mode": result.mode, "feeds": result.feeds, "rules": result.rules, "categories": result.categories}
+
+
+@app.get("/api/system/disk", tags=["system"])
+async def get_disk_status(_: None = Depends(require_admin)) -> dict[str, object]:
+    return disk_status().as_dict()
 
 
 @app.get("/api/integrations/status", response_model=IntegrationStatus, tags=["integrations"])

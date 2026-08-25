@@ -15,6 +15,7 @@ class Feed(Base):
     name: Mapped[str] = mapped_column(String(120), unique=True)
     url: Mapped[str] = mapped_column(Text)
     adapter_type: Mapped[str] = mapped_column(String(32), default="generic_rss")
+    proxy_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     interval_minutes: Mapped[int] = mapped_column(Integer, default=30)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

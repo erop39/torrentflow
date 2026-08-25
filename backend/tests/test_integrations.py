@@ -98,6 +98,15 @@ def test_qbit_downloads_returns_adapter_json(monkeypatch: pytest.MonkeyPatch) ->
     assert asyncio.run(integrations.qbit_downloads()) == downloads
 
 
+def test_qbit_add_passes_category_and_save_path(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("TORRENTFLOW_QBITTORRENT_URL", "https://qbit.example")
+    FakeAsyncClient.responses = [response(200, text="Ok."), response(200, json={})]
+
+    asyncio.run(integrations.qbit_add("https://feed.example/item", category="movies", save_path="/downloads/movies"))
+
+    assert FakeAsyncClient.instances[0].calls[-1] == ("POST", "https://qbit.example/api/v2/torrents/add", {"urls": "https://feed.example/item", "category": "movies", "savepath": "/downloads/movies"})
+
+
 def test_telegram_send_posts_expected_payload(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("TORRENTFLOW_TELEGRAM_BOT_TOKEN", "test-token")
     monkeypatch.setenv("TORRENTFLOW_TELEGRAM_CHAT_ID", "12345")

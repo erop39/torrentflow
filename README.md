@@ -10,10 +10,13 @@ TorrentFlow is a LAN-first control room for RSS/Atom releases on a NAS. It scans
 - RSS feed creation, checking, scheduling, and deletion.
 - Persistent release queue in SQLite.
 - Priority rules with comma-separated keyword matching, minimum seed threshold, category, and actions: `notify`, `auto_add`, `both`.
+- Smart auto-add gates: freeleech/double-upload flags, maximum size, uploader allow/block lists, and per-rule qBittorrent category/save path.
+- TorrentLeech RSS metadata extraction plus optional per-feed HTTP(S) or SOCKS5 proxy.
 - qBittorrent and Telegram integration adapters, configured through environment variables.
 - Audit events for discoveries and integration outcomes.
 - React dashboard with API-bound RSS feeds, Releases, Rules, Downloads, History, Notifications, and Settings screens.
 - Docker Compose deployment with Alembic startup migrations, health checks, and rotating SQLite backups.
+- Disk-space health monitoring and transition-based Telegram alerts; secret-free JSON/YAML configuration export/import.
 
 ## Architecture
 
@@ -105,6 +108,7 @@ Test restoration on a copy before relying on it for incident recovery.
 | `TORRENTFLOW_QBITTORRENT_PASSWORD` | For qB | qBittorrent password |
 | `TORRENTFLOW_TELEGRAM_BOT_TOKEN` | For Telegram | Telegram bot token |
 | `TORRENTFLOW_TELEGRAM_CHAT_ID` | For Telegram | Target chat ID |
+| `TORRENTFLOW_DISK_FREE_THRESHOLD_PERCENT` | No (10) | Alert when the data volume has less free space than this percentage |
 
 Never put passwords, RSS keys, tokens, or database URLs in committed files, screenshots, or the Memory Bank.
 

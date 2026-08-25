@@ -29,3 +29,13 @@ def test_empty_keyword_rule_matches_any_title_after_prior_rules_do_not_match() -
     catch_all = Rule(id=2, name="Catch all", include_keywords="", enabled=True)
 
     assert match_rule("Arch Linux image", 0, [specific, catch_all]) is catch_all
+
+
+def test_smart_conditions_require_matching_torrentleech_metadata() -> None:
+    smart = Rule(id=1, name="Trusted freeleech", include_keywords="release", min_seeds=5, freeleech_only=True, double_upload_only=True, max_size_bytes=1000, uploader_whitelist="trusted", uploader_blacklist="blocked", enabled=True)
+    fallback = Rule(id=2, name="Fallback", enabled=True)
+
+    assert match_rule("Release", 5, [smart, fallback], freeleech=False, double_upload=True, size_bytes=100, uploader="trusted") is fallback
+    assert match_rule("Release", 5, [smart, fallback], freeleech=True, double_upload=True, size_bytes=1001, uploader="trusted") is fallback
+    assert match_rule("Release", 5, [smart, fallback], freeleech=True, double_upload=True, size_bytes=100, uploader="blocked") is fallback
+    assert match_rule("Release", 5, [smart, fallback], freeleech=True, double_upload=True, size_bytes=100, uploader="TRUSTED") is smart
