@@ -1,12 +1,16 @@
 from datetime import datetime
 from enum import StrEnum
+from ipaddress import ip_address
+from typing import Literal
+from urllib.parse import urlparse
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class ServiceStatus(StrEnum):
     HEALTHY = "healthy"
     DEGRADED = "degraded"
+    UNCONFIGURED = "unconfigured"
 
 
 class ServiceHealth(BaseModel):
@@ -42,12 +46,34 @@ class FeedCreate(BaseModel):
     adapter_type: str = "generic_rss"
     interval_minutes: int = Field(default=30, ge=10, le=1440)
 
+    @field_validator("url")
+    @classmethod
+    def require_external_http_url(cls, value: str) -> str:
+        parsed = urlparse(value)
+        if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+            raise ValueError("RSS URL must be an absolute http(s) URL")
+        hostname = parsed.hostname.lower()
+        if hostname in {"localhost", "localhost.localdomain"} or hostname.endswith(".local"):
+            raise ValueError("RSS URL must not target a local host")
+        try:
+            is_global = ip_address(hostname).is_global
+        except ValueError:
+            is_global = True
+        if not is_global:
+            raise ValueError("RSS URL must not target a private address")
+        return value
+
 
 class FeedUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=120)
     url: str | None = Field(default=None, min_length=1)
     enabled: bool | None = None
     interval_minutes: int | None = Field(default=None, ge=10, le=1440)
+
+    @field_validator("url")
+    @classmethod
+    def require_external_http_url(cls, value: str | None) -> str | None:
+        return FeedCreate.require_external_http_url(value) if value is not None else value
 
 
 class FeedResponse(BaseModel):
@@ -100,7 +126,7 @@ class RuleCreate(BaseModel):
     name: str = Field(min_length=1, max_length=120)
     include_keywords: str = ""
     min_seeds: int = Field(default=0, ge=0)
-    action: str = "notify"
+    action: Literal["notify", "auto_add", "both"] = "notify"
     priority: int = Field(default=100, ge=0)
     category: str = Field(default="series", min_length=1, max_length=32)
 

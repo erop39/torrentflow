@@ -1,5 +1,5 @@
 export type Page = 'dashboard' | 'feeds' | 'releases' | 'rules' | 'downloads' | 'history' | 'notifications' | 'settings'
-export type Health = 'healthy' | 'degraded'
+export type Health = 'healthy' | 'degraded' | 'unconfigured'
 
 export type ServiceHealth = { name: string; status: Health; detail: string }
 export type HealthResponse = { services: ServiceHealth[]; checked_at: string }

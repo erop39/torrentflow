@@ -18,7 +18,8 @@ def test_health_contract() -> None:
     assert response.status_code == 200
     body = response.json()
     assert len(body["services"]) == 4
-    assert {item["status"] for item in body["services"]} <= {"healthy", "degraded"}
+    assert {item["status"] for item in body["services"]} <= {"healthy", "degraded", "unconfigured"}
+    assert {item["name"] for item in body["services"] if item["status"] == "unconfigured"} == {"qBittorrent", "Telegram"}
 
 
 def test_readiness_checks_database() -> None:
@@ -80,6 +81,22 @@ def test_create_rule_contract() -> None:
         response = client.post("/api/rules", json={"name": f"Linux {uuid4()}", "include_keywords": "ubuntu,debian", "min_seeds": 5, "action": "notify", "priority": 10})
     assert response.status_code == 201
     assert response.json()["min_seeds"] == 5
+
+
+def test_rule_rejects_unknown_action() -> None:
+    with TestClient(app) as client:
+        login(client)
+        response = client.post("/api/rules", json={"name": f"Invalid {uuid4()}", "action": "autoad"})
+    assert response.status_code == 422
+
+
+def test_feed_rejects_local_or_non_http_url() -> None:
+    with TestClient(app) as client:
+        login(client)
+        localhost = client.post("/api/feeds", json={"name": f"Local {uuid4()}", "url": "http://127.0.0.1:8000/rss"})
+        wrong_scheme = client.post("/api/feeds", json={"name": f"File {uuid4()}", "url": "file:///etc/passwd"})
+    assert localhost.status_code == 422
+    assert wrong_scheme.status_code == 422
 
 
 def test_categories_control_rule_validation_and_default_visibility() -> None:

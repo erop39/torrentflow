@@ -13,8 +13,8 @@
 - Production review findings resolved: runtime Alembic URL, database readiness, credentials validation, safe Docker build contexts, backup safety, isolated test database, scheduler timezone handling, and recovery instructions.
 - Persistent category catalog, colors, default Releases filter, and Settings management are complete and verified.
 - Root README with local setup, configuration, verification, and MVP status.
-- Backend tests (15) and frontend production build pass at the latest implementation checkpoint.
+- Backend tests (17) and frontend production build pass at the latest implementation checkpoint.
 
 ## Next
 
-- Perform visual QA and live integration tests after deployment credentials are supplied.
+- Run Docker Compose end-to-end and live qBittorrent/Telegram tests after deployment credentials and a Docker runtime are supplied.

@@ -13,6 +13,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from sqlalchemy import delete, select
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.exc import IntegrityError
 
 from .database import SessionLocal, engine, get_session
 from .models import AuditEvent, Base, Category, Feed, Rule, StoredRelease
@@ -165,14 +166,14 @@ async def me(request: Request) -> SessionResponse:
 
 
 @app.get("/api/health", response_model=HealthResponse, tags=["system"])
-async def get_health() -> HealthResponse:
-    """Return the UI-facing health contract. Adapter checks replace these defaults in Phase 1."""
+async def get_health(session: AsyncSession = Depends(get_session)) -> HealthResponse:
+    rule_count = len(list((await session.scalars(select(Rule).where(Rule.enabled.is_(True)))).all()))
     return HealthResponse(
         services=[
-            ServiceHealth(name="RSS", status=ServiceStatus.HEALTHY, detail="Last scan 2m ago"),
-            ServiceHealth(name="Rules", status=ServiceStatus.HEALTHY, detail="12 active rules"),
-            ServiceHealth(name="qBittorrent", status=ServiceStatus.DEGRADED, detail="Retry in 04:12"),
-            ServiceHealth(name="Telegram", status=ServiceStatus.HEALTHY, detail="Delivered 2m ago"),
+            ServiceHealth(name="RSS", status=ServiceStatus.HEALTHY, detail="Scheduler active"),
+            ServiceHealth(name="Rules", status=ServiceStatus.HEALTHY, detail=f"{rule_count} active rules"),
+            ServiceHealth(name="qBittorrent", status=ServiceStatus.HEALTHY if qbit_configured() else ServiceStatus.UNCONFIGURED, detail="Configured; test connection in Settings" if qbit_configured() else "Not configured"),
+            ServiceHealth(name="Telegram", status=ServiceStatus.HEALTHY if telegram_configured() else ServiceStatus.UNCONFIGURED, detail="Configured; test connection in Settings" if telegram_configured() else "Not configured"),
         ],
         checked_at=datetime.now(UTC),
     )
@@ -269,7 +270,7 @@ async def create_category(payload: CategoryCreate, session: AsyncSession = Depen
     session.add(category)
     try:
         await session.commit()
-    except Exception as error:
+    except IntegrityError as error:
         await session.rollback()
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Category already exists") from error
     await session.refresh(category)
