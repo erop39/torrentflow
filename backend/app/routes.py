@@ -5,10 +5,11 @@ from collections.abc import Awaitable, Callable
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .configuration import ConfigurationValidationError, canonical_configuration_json, canonical_configuration_yaml, export_configuration, get_disk_free_threshold_percent, import_configuration, set_disk_free_threshold_percent
+from .configuration import ConfigurationValidationError, canonical_configuration_json, canonical_configuration_yaml, export_configuration, get_disk_free_threshold_percent, get_telegram_message_template, import_configuration, set_disk_free_threshold_percent, set_telegram_message_template
 from .database import get_session
-from .schemas import DiskThresholdResponse, DiskThresholdUpdate, TrackerCredentialsStatus, TrackerCredentialsUpdate
+from .schemas import DiskThresholdResponse, DiskThresholdUpdate, TelegramTemplateResponse, TelegramTemplateUpdate, TrackerCredentialsStatus, TrackerCredentialsUpdate
 from .secrets import SecretStorageUnavailable, delete_tracker_credentials, store_tracker_credentials, tracker_credentials_configured
+from .telegram_templates import TELEGRAM_TEMPLATE_PLACEHOLDERS
 
 RequireAdmin = Callable[[Request], Awaitable[None]]
 Audit = Callable[[AsyncSession, str, str, int | None], Awaitable[None]]
@@ -82,5 +83,22 @@ def configuration_router(require_admin: RequireAdmin, audit: Audit) -> APIRouter
         await audit(session, "disk.threshold_updated", f"Disk threshold set to {payload.disk_free_threshold_percent:g}%")
         await session.commit()
         return DiskThresholdResponse(disk_free_threshold_percent=payload.disk_free_threshold_percent)
+
+    @router.get("/api/settings/telegram-template", response_model=TelegramTemplateResponse)
+    async def get_telegram_template(session: AsyncSession = Depends(get_session), _: None = Depends(require_admin)) -> TelegramTemplateResponse:
+        return TelegramTemplateResponse(
+            message_template=await get_telegram_message_template(session),
+            supported_placeholders=sorted(TELEGRAM_TEMPLATE_PLACEHOLDERS),
+        )
+
+    @router.put("/api/settings/telegram-template", response_model=TelegramTemplateResponse)
+    async def update_telegram_template(payload: TelegramTemplateUpdate, session: AsyncSession = Depends(get_session), _: None = Depends(require_admin)) -> TelegramTemplateResponse:
+        await set_telegram_message_template(session, payload.message_template)
+        await audit(session, "telegram.template_updated", "Telegram notification template updated")
+        await session.commit()
+        return TelegramTemplateResponse(
+            message_template=payload.message_template,
+            supported_placeholders=sorted(TELEGRAM_TEMPLATE_PLACEHOLDERS),
+        )
 
     return router

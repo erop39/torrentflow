@@ -21,6 +21,7 @@
 - Smart Auto-Add constraints, uploader lists, TorrentLeech flags, qBittorrent targets, per-feed proxy, disk alerts, and JSON/YAML configuration backup are implemented.
 - README, changelog, and TODO were reconciled with current functionality and review findings.
 - Final review findings were closed: proxy userinfo is rejected and legacy values scrubbed by migration; adapter types and proxy validation are centralized; matching has an explicit API; automation/configuration routes are extracted from `main.py`; tracker credentials are Fernet-encrypted and excluded from backups; disk threshold joins portable settings; JSON/YAML export and local HTTP/SOCKS adapter tests are available.
+- Immediate follow-up features are complete: best-effort release parsing/grouping, safe Telegram templates, filtered/paginated release and audit APIs, and persisted feed scan run diagnostics.
 
 ## Next
 

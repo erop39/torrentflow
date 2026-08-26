@@ -93,12 +93,39 @@ class StoredRelease(Base):
     feed_id: Mapped[int] = mapped_column(Integer, index=True)
     external_id: Mapped[str] = mapped_column(String(255), unique=True)
     title: Mapped[str] = mapped_column(Text)
+    display_title: Mapped[str] = mapped_column(Text, default="")
+    group_key: Mapped[str] = mapped_column(String(200), default="", index=True)
+    media_type: Mapped[str] = mapped_column(String(16), default="unknown")
+    parsed_series_title: Mapped[str | None] = mapped_column(Text, nullable=True)
+    parsed_season: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    parsed_episode: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    parsed_year: Mapped[int | None] = mapped_column(Integer, nullable=True)
     link: Mapped[str] = mapped_column(Text, default="")
     matched_rule_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     status: Mapped[str] = mapped_column(String(16), default="new")
     category: Mapped[str] = mapped_column(String(32), default="series")
     seeds: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class FeedScanRun(Base):
+    """One completed (or failed) RSS polling attempt.
+
+    Error text is deliberately a short, classified summary rather than the
+    original exception, which can contain a feed URL or tracker response.
+    """
+
+    __tablename__ = "feed_scan_runs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    feed_id: Mapped[int] = mapped_column(Integer, index=True)
+    status: Mapped[str] = mapped_column(String(16))
+    discovered: Mapped[int] = mapped_column(Integer, default=0)
+    new_releases: Mapped[int] = mapped_column(Integer, default=0)
+    duration_ms: Mapped[int] = mapped_column(Integer, default=0)
+    error_summary: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    completed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class AuditEvent(Base):

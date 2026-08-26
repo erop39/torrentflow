@@ -6,7 +6,7 @@ import os
 import asyncio
 import sys
 
-from fastapi import Depends, FastAPI, HTTPException, Request, Response, status
+from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 from sqlalchemy import delete, select
@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
 
 from .database import SessionLocal, get_session
-from .models import AuditEvent, Category, Feed, Rule, StoredRelease
+from .models import AuditEvent, Category, Feed, FeedScanRun, Rule, StoredRelease
 from .migrations import upgrade_database
 from .rss import fetch_entries
 from .matching import match_rule
@@ -23,7 +23,7 @@ from .integrations import qbit_add, qbit_configured, qbit_downloads, telegram_co
 from .monitoring import DiskSpaceState, check_disk_space
 from .configuration import get_disk_free_threshold_percent
 from .secrets import delete_tracker_credentials, load_tracker_credentials
-from .schemas import AuditEventResponse, CategoryCreate, CategoryResponse, CategoryUpdate, DownloadItem, FeedCheckItem, FeedCheckResponse, FeedCreate, FeedResponse, FeedUpdate, HealthResponse, IntegrationStatus, LoginRequest, Release, ReleaseOutcome, RuleCreate, RuleResponse, ServiceHealth, ServiceStatus, SessionResponse, StoredReleaseResponse
+from .schemas import AuditEventResponse, CategoryCreate, CategoryResponse, CategoryUpdate, DownloadItem, FeedCheckItem, FeedCheckResponse, FeedCreate, FeedResponse, FeedScanRunResponse, FeedUpdate, HealthResponse, IntegrationStatus, LoginRequest, Release, ReleaseOutcome, RuleCreate, RuleResponse, ServiceHealth, ServiceStatus, SessionResponse, StoredReleaseResponse
 from . import automation
 from .routes import configuration_router
 
@@ -189,13 +189,46 @@ async def readiness() -> dict[str, bool]:
     return {"ready": True}
 
 
+def _contains_pattern(value: str) -> str:
+    """Build a literal substring LIKE pattern; user input is never SQL syntax."""
+    escaped = value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    return f"%{escaped}%"
+
+
 @app.get("/api/releases", response_model=list[StoredReleaseResponse], tags=["releases"])
-async def list_releases(session: AsyncSession = Depends(get_session), _: None = Depends(require_admin)) -> list[StoredReleaseResponse]:
-    """Return persisted release decisions, newest first."""
-    releases = list((await session.scalars(select(StoredRelease).order_by(StoredRelease.created_at.desc(), StoredRelease.id.desc()))).all())
-    feed_names = {feed.id: feed.name for feed in (await session.scalars(select(Feed))).all()}
-    rule_names = {rule.id: rule.name for rule in (await session.scalars(select(Rule))).all()}
-    return [StoredReleaseResponse(id=release.id, title=release.title, link=release.link, source=feed_names.get(release.feed_id, "Unknown feed"), rule_name=rule_names.get(release.matched_rule_id), status=release.status, category=release.category, seeds=release.seeds, created_at=release.created_at) for release in releases]
+async def list_releases(
+    title: str | None = Query(default=None, min_length=1, max_length=200),
+    category: str | None = Query(default=None, min_length=1, max_length=32),
+    source: str | None = Query(default=None, min_length=1, max_length=120),
+    rule: str | None = Query(default=None, min_length=1, max_length=120),
+    release_status: str | None = Query(default=None, alias="status", min_length=1, max_length=16),
+    min_seeds: int | None = Query(default=None, ge=0),
+    max_seeds: int | None = Query(default=None, ge=0),
+    limit: int = Query(default=100, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    session: AsyncSession = Depends(get_session),
+    _: None = Depends(require_admin),
+) -> list[StoredReleaseResponse]:
+    """Search persisted release fields, newest first, with bounded pagination."""
+    if min_seeds is not None and max_seeds is not None and min_seeds > max_seeds:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="min_seeds must not exceed max_seeds")
+    statement = select(StoredRelease, Feed.name, Rule.name).outerjoin(Feed, StoredRelease.feed_id == Feed.id).outerjoin(Rule, StoredRelease.matched_rule_id == Rule.id)
+    if title:
+        statement = statement.where(StoredRelease.title.ilike(_contains_pattern(title), escape="\\"))
+    if category:
+        statement = statement.where(StoredRelease.category == category)
+    if source:
+        statement = statement.where(Feed.name.ilike(_contains_pattern(source), escape="\\"))
+    if rule:
+        statement = statement.where(Rule.name.ilike(_contains_pattern(rule), escape="\\"))
+    if release_status:
+        statement = statement.where(StoredRelease.status == release_status)
+    if min_seeds is not None:
+        statement = statement.where(StoredRelease.seeds >= min_seeds)
+    if max_seeds is not None:
+        statement = statement.where(StoredRelease.seeds <= max_seeds)
+    rows = (await session.execute(statement.order_by(StoredRelease.created_at.desc(), StoredRelease.id.desc()).offset(offset).limit(limit))).all()
+    return [StoredReleaseResponse(id=release.id, title=release.title, display_title=release.display_title or release.title, group_key=release.group_key or f"unknown:{release.id}", media_type=release.media_type if release.media_type in {"series", "movie", "unknown"} else "unknown", parsed_series_title=release.parsed_series_title, parsed_season=release.parsed_season, parsed_episode=release.parsed_episode, parsed_year=release.parsed_year, link=release.link, source=feed_name or "Unknown feed", rule_name=rule_name, status=release.status, category=release.category, seeds=release.seeds, created_at=release.created_at) for release, feed_name, rule_name in rows]
 
 
 @app.get("/api/feeds", response_model=list[FeedResponse], tags=["feeds"])
@@ -322,6 +355,41 @@ async def test_telegram(session: AsyncSession = Depends(get_session), _: None = 
     return {"ok": True}
 
 
+@app.get("/api/feed-runs", response_model=list[FeedScanRunResponse], tags=["feeds", "system"])
+async def list_feed_runs(
+    feed_id: int | None = Query(default=None, ge=1),
+    run_status: str | None = Query(default=None, alias="status", pattern="^(succeeded|failed)$"),
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    session: AsyncSession = Depends(get_session),
+    _: None = Depends(require_admin),
+) -> list[FeedScanRunResponse]:
+    """Expose recent scan outcomes without retaining raw tracker exceptions."""
+    statement = select(FeedScanRun, Feed.name).outerjoin(Feed, FeedScanRun.feed_id == Feed.id)
+    if feed_id is not None:
+        statement = statement.where(FeedScanRun.feed_id == feed_id)
+    if run_status is not None:
+        statement = statement.where(FeedScanRun.status == run_status)
+    rows = (await session.execute(statement.order_by(FeedScanRun.started_at.desc(), FeedScanRun.id.desc()).offset(offset).limit(limit))).all()
+    return [FeedScanRunResponse(id=run.id, feed_id=run.feed_id, feed_name=feed_name, status=run.status, discovered=run.discovered, new_releases=run.new_releases, duration_ms=run.duration_ms, error_summary=run.error_summary, started_at=run.started_at, completed_at=run.completed_at) for run, feed_name in rows]
+
+
 @app.get("/api/audit", response_model=list[AuditEventResponse], tags=["audit"])
-async def list_audit(session: AsyncSession = Depends(get_session), _: None = Depends(require_admin)) -> list[AuditEvent]:
-    return list((await session.scalars(select(AuditEvent).order_by(AuditEvent.created_at.desc(), AuditEvent.id.desc()).limit(200))).all())
+async def list_audit(
+    query: str | None = Query(default=None, min_length=1, max_length=200),
+    event_type: str | None = Query(default=None, min_length=1, max_length=64),
+    release_id: int | None = Query(default=None, ge=1),
+    limit: int = Query(default=200, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    session: AsyncSession = Depends(get_session),
+    _: None = Depends(require_admin),
+) -> list[AuditEvent]:
+    """Search event history with a bounded page size."""
+    statement = select(AuditEvent)
+    if query:
+        statement = statement.where(AuditEvent.message.ilike(_contains_pattern(query), escape="\\"))
+    if event_type:
+        statement = statement.where(AuditEvent.event_type == event_type)
+    if release_id is not None:
+        statement = statement.where(AuditEvent.release_id == release_id)
+    return list((await session.scalars(statement.order_by(AuditEvent.created_at.desc(), AuditEvent.id.desc()).offset(offset).limit(limit))).all())

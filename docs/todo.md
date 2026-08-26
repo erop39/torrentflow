@@ -51,14 +51,14 @@
 
 ## Средний приоритет (v1.1)
 
-- [ ] **guessit + базовый парсинг названий**  
-  Красиво показывать Show S03E05, Movie (2024) и т.д. + возможность группировки.
+- [x] **guessit + базовый парсинг названий**
+  Release names получают безопасные series/movie labels и persistent group key; нераспознанные значения остаются исходными.
 
-- [ ] **Кастомные шаблоны Telegram-сообщений**  
-  Чтобы можно было настроить текст уведомления под себя.
+- [x] **Кастомные шаблоны Telegram-сообщений**
+  Settings API принимает только whitelisted placeholders и применяет шаблон к release notifications.
 
-- [ ] **Поиск и advanced filters** в ленте релизов и History  
-  По названию, uploader, категории, размеру, freeleech и т.д.
+- [x] **Поиск и advanced filters** в ленте релизов и History
+  API поддерживает bounded search/filter/pagination для releases, audit и feed-run history по persisted полям.
 
 - [ ] **API Token** для внешних интеграций  
   Home Assistant, n8n, скрипты и т.п.
@@ -66,8 +66,8 @@
 - [ ] **MQTT events**  
   Полезно, если уже есть Home Assistant.
 
-- [ ] **Более детальный health / job log**  
-  История последних проверок фидов, ошибки, время выполнения.
+- [x] **Более детальный health / job log**
+  Каждый scan сохраняет success/failure, duration, счётчики и безопасную классификацию ошибки.
 
 ---
 

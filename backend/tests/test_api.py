@@ -321,4 +321,4 @@ def test_failed_auto_add_is_audited(monkeypatch) -> None:
         client.post(f"/api/feeds/{feed.json()['id']}/check")
         audit = client.get("/api/audit")
 
-    assert any(event["event_type"] == "qbit.failed" and "connection refused" in event["message"] for event in audit.json())
+    assert any(event["event_type"] == "qbit.failed" and event["message"].endswith("RuntimeError") for event in audit.json())

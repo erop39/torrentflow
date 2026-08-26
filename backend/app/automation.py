@@ -8,15 +8,19 @@ to retain stable monkeypatch seams for tests and integrations.
 from __future__ import annotations
 
 import logging
+import time
 from datetime import UTC, datetime
 from typing import Awaitable, Callable
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from .models import AuditEvent, Feed, Rule, StoredRelease
+from .configuration import get_telegram_message_template
+from .models import AuditEvent, Feed, FeedScanRun, Rule, StoredRelease
+from .release_parsing import parse_release_title
 from .schemas import FeedCheckItem, FeedCheckResponse
 from .secrets import TrackerCredentials
+from .telegram_templates import render_telegram_message
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +45,72 @@ async def scan_feed(
     load_tracker_credentials: Callable[[AsyncSession, int], Awaitable[TrackerCredentials | None]],
     audit: Audit = record_audit,
 ) -> FeedCheckResponse:
+    """Scan one feed and persist an operationally safe outcome record.
+
+    A scan can fail before the release transaction is committed.  In that
+    case, rollback the attempted release changes and write a separate failed
+    run so the health log remains truthful.
+    """
+    started_at = datetime.now(UTC)
+    started_monotonic = time.perf_counter()
+    feed_id = feed.id
+    try:
+        result = await _scan_feed_entries(
+            feed,
+            session,
+            fetch_entries=fetch_entries,
+            match_rule=match_rule,
+            qbit_configured=qbit_configured,
+            qbit_add=qbit_add,
+            telegram_configured=telegram_configured,
+            telegram_send=telegram_send,
+            load_tracker_credentials=load_tracker_credentials,
+            audit=audit,
+        )
+        session.add(FeedScanRun(
+            feed_id=feed_id,
+            status="succeeded",
+            discovered=result.discovered,
+            new_releases=result.new,
+            duration_ms=max(0, round((time.perf_counter() - started_monotonic) * 1000)),
+            started_at=started_at,
+            completed_at=datetime.now(UTC),
+        ))
+        await session.commit()
+        return result
+    except Exception as error:
+        await session.rollback()
+        # Do not persist exception text: tracker URLs and HTTP diagnostics can
+        # embed credentials.  The exception class is sufficient to diagnose
+        # the failure category without disclosing request data.
+        session.add(FeedScanRun(
+            feed_id=feed_id,
+            status="failed",
+            duration_ms=max(0, round((time.perf_counter() - started_monotonic) * 1000)),
+            error_summary=f"Scan failed ({type(error).__name__})",
+            started_at=started_at,
+            completed_at=datetime.now(UTC),
+        ))
+        persisted_feed = await session.get(Feed, feed_id)
+        if persisted_feed is not None:
+            persisted_feed.last_checked_at = datetime.now(UTC)
+        await session.commit()
+        raise
+
+
+async def _scan_feed_entries(
+    feed: Feed,
+    session: AsyncSession,
+    *,
+    fetch_entries: Callable[..., Awaitable[list[dict[str, object]]]],
+    match_rule: Callable[..., Rule | None],
+    qbit_configured: Callable[[], bool],
+    qbit_add: Callable[..., Awaitable[None]],
+    telegram_configured: Callable[[], bool],
+    telegram_send: Callable[[str], Awaitable[None]],
+    load_tracker_credentials: Callable[[AsyncSession, int], Awaitable[TrackerCredentials | None]],
+    audit: Audit,
+) -> FeedCheckResponse:
     fetch_options: dict[str, str] = {}
     if feed.proxy_url:
         fetch_options["proxy_url"] = feed.proxy_url
@@ -52,6 +122,7 @@ async def scan_feed(
     entries = await fetch_entries(feed.url, **fetch_options)
     rules = list((await session.scalars(select(Rule).order_by(Rule.priority, Rule.id))).all())
     rule_names = {rule.id: rule.name for rule in rules}
+    telegram_template = await get_telegram_message_template(session)
     created = 0
     items: list[FeedCheckItem] = []
     for entry in entries:
@@ -59,6 +130,7 @@ async def scan_feed(
         existing = await session.scalar(select(StoredRelease).where(StoredRelease.external_id == external_id))
         if existing is None:
             seeds = int(entry.get("seeds", 0))
+            parsed_release = parse_release_title(entry["title"])
             matched = match_rule(
                 str(entry["title"]), seeds, rules,
                 freeleech=entry.get("freeleech") is True,
@@ -67,7 +139,23 @@ async def scan_feed(
                 uploader=str(entry.get("uploader") or ""),
             )
             action = matched.action if matched else "ignored"
-            existing = StoredRelease(feed_id=feed.id, external_id=external_id, title=str(entry["title"]), link=str(entry["link"]), seeds=seeds, category=matched.category if matched else "series", matched_rule_id=matched.id if matched else None, status=action)
+            existing = StoredRelease(
+                feed_id=feed.id,
+                external_id=external_id,
+                title=str(entry["title"]),
+                display_title=parsed_release.display_title,
+                group_key=parsed_release.group_key,
+                media_type=parsed_release.media_type,
+                parsed_series_title=parsed_release.series_title,
+                parsed_season=parsed_release.season,
+                parsed_episode=parsed_release.episode,
+                parsed_year=parsed_release.year,
+                link=str(entry["link"]),
+                seeds=seeds,
+                category=matched.category if matched else "series",
+                matched_rule_id=matched.id if matched else None,
+                status=action,
+            )
             session.add(existing)
             await session.flush()
             created += 1
@@ -78,16 +166,22 @@ async def scan_feed(
                     await qbit_add(existing.link, **qbit_options)
                     await audit(session, "qbit.added", existing.title, existing.id)
                 except Exception as error:
-                    await audit(session, "qbit.failed", f"{existing.title}: {error}", existing.id)
+                    await audit(session, "qbit.failed", f"{existing.title}: {type(error).__name__}", existing.id)
             if action in {"notify", "both"} and telegram_configured():
                 try:
-                    await telegram_send(f"TorrentFlow: {existing.title}\nRule: {matched.name if matched else '—'}\nCategory: {existing.category}")
+                    await telegram_send(render_telegram_message(telegram_template, {
+                        "title": existing.title,
+                        "rule": matched.name if matched else "—",
+                        "category": existing.category,
+                        "seeds": existing.seeds,
+                        "feed": feed.name,
+                        "link": existing.link,
+                    }))
                     await audit(session, "telegram.sent", existing.title, existing.id)
                 except Exception as error:
-                    await audit(session, "telegram.failed", f"{existing.title}: {error}", existing.id)
+                    await audit(session, "telegram.failed", f"{existing.title}: {type(error).__name__}", existing.id)
         items.append(FeedCheckItem(title=existing.title, status=existing.status, rule_name=rule_names.get(existing.matched_rule_id), category=existing.category, seeds=existing.seeds))
     feed.last_checked_at = datetime.now(UTC)
-    await session.commit()
     return FeedCheckResponse(discovered=len(entries), new=created, items=items[:25])
 
 

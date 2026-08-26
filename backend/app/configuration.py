@@ -11,13 +11,19 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
 import yaml
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .models import ApplicationSetting, Category, Feed, Rule, TrackerCredential
 from .schemas import CategoryCreate, FeedCreate, RuleCreate
+from .telegram_templates import (
+    DEFAULT_TELEGRAM_MESSAGE_TEMPLATE,
+    TELEGRAM_MESSAGE_TEMPLATE_SETTING,
+    TelegramTemplateValidationError,
+    validate_telegram_message_template,
+)
 
 CONFIGURATION_FORMAT = "torrentflow/configuration"
 CONFIGURATION_VERSION = 2
@@ -42,7 +48,18 @@ class ApplicationSettingsConfiguration(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    disk_free_threshold_percent: float = Field(ge=0, le=100)
+    disk_free_threshold_percent: float | None = Field(default=None, ge=0, le=100)
+    telegram_message_template: str | None = Field(default=None, max_length=4096)
+
+    @field_validator("telegram_message_template")
+    @classmethod
+    def validate_telegram_template(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        try:
+            return validate_telegram_message_template(value)
+        except TelegramTemplateValidationError as error:
+            raise ValueError(str(error)) from error
 
 
 class ConfigurationDocument(BaseModel):
@@ -133,9 +150,16 @@ async def export_configuration(session: AsyncSession) -> ConfigurationDocument:
     rules = list((await session.scalars(select(Rule).order_by(Rule.priority, Rule.id))).all())
     settings = {
         item.key: item.value
-        for item in (await session.scalars(select(ApplicationSetting).where(ApplicationSetting.key == DISK_FREE_THRESHOLD_SETTING))).all()
+        for item in (
+            await session.scalars(
+                select(ApplicationSetting).where(
+                    ApplicationSetting.key.in_((DISK_FREE_THRESHOLD_SETTING, TELEGRAM_MESSAGE_TEMPLATE_SETTING))
+                )
+            )
+        ).all()
     }
     disk_threshold = _parse_disk_free_threshold(settings.get(DISK_FREE_THRESHOLD_SETTING))
+    telegram_template = _parse_telegram_message_template(settings.get(TELEGRAM_MESSAGE_TEMPLATE_SETTING))
     return ConfigurationDocument(
         categories=[CategoryCreate(name=item.name, color=item.color, is_interesting=item.is_interesting) for item in categories],
         feeds=[FeedConfiguration(name=item.name, url=item.url, adapter_type=item.adapter_type, proxy_url=item.proxy_url, interval_minutes=item.interval_minutes, enabled=item.enabled) for item in feeds],
@@ -158,7 +182,14 @@ async def export_configuration(session: AsyncSession) -> ConfigurationDocument:
             )
             for item in rules
         ],
-        settings=ApplicationSettingsConfiguration(disk_free_threshold_percent=disk_threshold) if disk_threshold is not None else None,
+        settings=(
+            ApplicationSettingsConfiguration(
+                disk_free_threshold_percent=disk_threshold,
+                telegram_message_template=telegram_template,
+            )
+            if disk_threshold is not None or telegram_template is not None
+            else None
+        ),
     )
 
 
@@ -201,7 +232,10 @@ async def import_configuration(
             data = rule_data.model_dump()
             await _upsert_by_name(session, Rule, data, mode)
         if document.settings is not None:
-            await set_disk_free_threshold_percent(session, document.settings.disk_free_threshold_percent)
+            if document.settings.disk_free_threshold_percent is not None:
+                await set_disk_free_threshold_percent(session, document.settings.disk_free_threshold_percent)
+            if document.settings.telegram_message_template is not None:
+                await set_telegram_message_template(session, document.settings.telegram_message_template)
 
     return ConfigurationImportResult(mode=mode, categories=len(document.categories), feeds=len(document.feeds), rules=len(document.rules))
 
@@ -251,3 +285,34 @@ async def set_disk_free_threshold_percent(session: AsyncSession, threshold: floa
         session.add(ApplicationSetting(key=DISK_FREE_THRESHOLD_SETTING, value=value))
     else:
         existing.value = value
+
+
+def _parse_telegram_message_template(value: str | None) -> str | None:
+    if value is None:
+        return None
+    try:
+        return validate_telegram_message_template(value)
+    except TelegramTemplateValidationError:
+        return None
+
+
+async def get_telegram_message_template(session: AsyncSession) -> str:
+    """Return the persisted template, or a safe default for missing/legacy data."""
+
+    stored = await session.scalar(
+        select(ApplicationSetting.value).where(ApplicationSetting.key == TELEGRAM_MESSAGE_TEMPLATE_SETTING)
+    )
+    return _parse_telegram_message_template(stored) or DEFAULT_TELEGRAM_MESSAGE_TEMPLATE
+
+
+async def set_telegram_message_template(session: AsyncSession, template: str) -> None:
+    """Persist a validated non-secret Telegram notification template."""
+
+    validated = validate_telegram_message_template(template)
+    existing = await session.scalar(
+        select(ApplicationSetting).where(ApplicationSetting.key == TELEGRAM_MESSAGE_TEMPLATE_SETTING)
+    )
+    if existing is None:
+        session.add(ApplicationSetting(key=TELEGRAM_MESSAGE_TEMPLATE_SETTING, value=validated))
+    else:
+        existing.value = validated

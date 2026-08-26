@@ -6,6 +6,7 @@ from urllib.parse import urlparse
 
 from pydantic import BaseModel, Field, field_validator
 
+from .telegram_templates import TelegramTemplateValidationError, validate_telegram_message_template
 from .validation import validate_proxy_url
 
 
@@ -125,6 +126,22 @@ class DiskThresholdResponse(DiskThresholdUpdate):
     pass
 
 
+class TelegramTemplateUpdate(BaseModel):
+    message_template: str = Field(min_length=1, max_length=4096)
+
+    @field_validator("message_template")
+    @classmethod
+    def validate_message_template(cls, value: str) -> str:
+        try:
+            return validate_telegram_message_template(value)
+        except TelegramTemplateValidationError as error:
+            raise ValueError(str(error)) from error
+
+
+class TelegramTemplateResponse(TelegramTemplateUpdate):
+    supported_placeholders: list[str]
+
+
 class FeedCheckItem(BaseModel):
     title: str
     status: str
@@ -142,6 +159,13 @@ class FeedCheckResponse(BaseModel):
 class StoredReleaseResponse(BaseModel):
     id: int
     title: str
+    display_title: str
+    group_key: str
+    media_type: Literal["series", "movie", "unknown"]
+    parsed_series_title: str | None = None
+    parsed_season: int | None = None
+    parsed_episode: int | None = None
+    parsed_year: int | None = None
     link: str
     source: str
     rule_name: str | None = None
@@ -149,6 +173,19 @@ class StoredReleaseResponse(BaseModel):
     category: str
     seeds: int
     created_at: datetime
+
+
+class FeedScanRunResponse(BaseModel):
+    id: int
+    feed_id: int
+    feed_name: str | None = None
+    status: Literal["succeeded", "failed"]
+    discovered: int = Field(ge=0)
+    new_releases: int = Field(ge=0)
+    duration_ms: int = Field(ge=0)
+    error_summary: str | None = None
+    started_at: datetime
+    completed_at: datetime
 
 
 class LoginRequest(BaseModel):

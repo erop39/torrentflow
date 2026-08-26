@@ -13,6 +13,8 @@
 - Encrypted, write-only per-feed tracker cookies and passkeys, backed by `TORRENTFLOW_ENCRYPTION_KEY`; they are excluded from exports and removed with their feed.
 - JSON and YAML configuration export in Settings, including the non-secret disk-alert threshold.
 - Real local HTTP RSS and SOCKS5 adapter integration coverage, shared proxy validation, strict adapter-type input validation, and migration `20260826_10` that removes legacy proxy URLs containing userinfo.
+- Release-name parsing and grouping through `guessit`: normalized series/movie labels with a safe unknown fallback.
+- Configurable Telegram notification templates with a strict placeholder whitelist, persisted feed-scan job history, and paginated release/audit/feed-run filtering APIs.
 - Добавлен multi-arch GitHub Actions build для `linux/amd64` и `linux/arm64`: pull request проверяет сборку, а `main` и version tags публикуют backend/frontend images в GHCR.
 - Добавлена подробная инструкция развёртывания на Synology Container Manager: GHCR images, managed volumes и bind mounts, права `root:root`/`0700`, backups, восстановление, upgrades, HTTPS и troubleshooting.
 - Расширено backend-покрытие до 26 тестов: edge cases matching и изолированные HTTP-проверки qBittorrent/Telegram адаптеров.
