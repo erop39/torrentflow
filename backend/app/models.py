@@ -53,6 +53,39 @@ class Category(Base):
     is_interesting: Mapped[bool] = mapped_column(Boolean, default=True)
 
 
+class ApplicationSetting(Base):
+    """A non-secret, user-configurable application setting.
+
+    Secrets deliberately have their own encrypted storage below so generic
+    configuration export can never accidentally include them.
+    """
+
+    __tablename__ = "application_settings"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    key: Mapped[str] = mapped_column(String(120), unique=True)
+    value: Mapped[str] = mapped_column(Text)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+class TrackerCredential(Base):
+    """Encrypted tracker authentication material, one record per feed.
+
+    The ciphertext is encrypted with the explicitly configured application
+    encryption key.  It is intentionally not part of ``Feed`` nor any export
+    model, which prevents accidental serialization of cookies or passkeys.
+    """
+
+    __tablename__ = "tracker_credentials"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    feed_id: Mapped[int] = mapped_column(Integer, unique=True)
+    encrypted_cookie: Mapped[str | None] = mapped_column(Text, nullable=True)
+    encrypted_passkey: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
 class StoredRelease(Base):
     __tablename__ = "releases"
 

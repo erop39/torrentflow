@@ -17,7 +17,8 @@ TorrentFlow is a LAN-first control room for RSS/Atom releases on a NAS. It scans
 - React dashboard with API-bound RSS feeds, Releases, Rules, Downloads, History, Notifications, and Settings screens.
 - Docker Compose deployment with Alembic startup migrations, health checks, and rotating SQLite backups.
 - Disk-space health monitoring and transition-based Telegram alerts.
-- Configuration backup: JSON export and JSON/YAML import for persisted feeds, rules, and categories. The Settings UI imports as a safe merge; destructive replacement is available only through the API with explicit confirmation.
+- Configuration backup: JSON/YAML export and import for persisted feeds, rules, categories, and the disk alert threshold. The Settings UI imports as a safe merge; destructive replacement is available only through the API with explicit confirmation.
+- Optional tracker cookies/passkeys are write-only, encrypted at rest with `TORRENTFLOW_ENCRYPTION_KEY`, and excluded from configuration backups.
 
 ## Architecture
 
@@ -44,7 +45,7 @@ $env:TORRENTFLOW_ADMIN_PASSWORD = "choose-a-strong-password"
 $env:TORRENTFLOW_SESSION_SECRET = "use-a-long-random-value"
 ```
 
-Optional qBittorrent and Telegram variables, plus the disk-free alert threshold, are documented in `backend/.env.example`.
+Optional qBittorrent and Telegram variables, plus the disk-free alert threshold, are documented in `backend/.env.example`. Set `TORRENTFLOW_ENCRYPTION_KEY` to a Fernet key before saving tracker cookies or passkeys (for example: `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`). Keep the key stable while credentials must remain readable.
 
 ### 2. Apply migrations and start the API
 
@@ -79,8 +80,8 @@ Open `http://127.0.0.1:4175` and sign in with `TORRENTFLOW_ADMIN_PASSWORD`.
 ## Disk alerts and configuration backup
 
 - `TORRENTFLOW_DISK_FREE_THRESHOLD_PERCENT` defaults to `10`. The scheduler records a `disk.low` audit event and sends Telegram only when free space first falls below the threshold; it records a recovery event after space returns.
-- In **Settings**, export the portable configuration as JSON or import a JSON/YAML file. Import merges records by name and never imports environment variables such as Telegram, qBittorrent, or session credentials.
-- Do not put a password in a per-feed proxy URL. The URL is stored as feed configuration and is currently included in configuration exports; use an unauthenticated local proxy endpoint instead.
+- In **Settings**, export the portable configuration as JSON or YAML, or import either format. Import merges records by name and never imports environment variables or tracker credentials.
+- Do not put a password in a per-feed proxy URL: URLs containing `user:password@` are rejected and legacy values are removed during migration. Use an unauthenticated local proxy endpoint or configure proxy authentication outside TorrentFlow.
 
 ## Synology / Docker Compose deployment
 
@@ -110,6 +111,7 @@ Test restoration on a copy before relying on it for incident recovery.
 | --- | --- | --- |
 | `TORRENTFLOW_ADMIN_PASSWORD` | Yes | Local administrator password |
 | `TORRENTFLOW_SESSION_SECRET` | Yes | Cookie signing secret |
+| `TORRENTFLOW_ENCRYPTION_KEY` | For tracker credentials | Fernet key encrypting per-feed cookies/passkeys at rest |
 | `TORRENTFLOW_QBITTORRENT_URL` | For qB | qBittorrent Web API base URL |
 | `TORRENTFLOW_QBITTORRENT_USERNAME` | For qB | qBittorrent username |
 | `TORRENTFLOW_QBITTORRENT_PASSWORD` | For qB | qBittorrent password |

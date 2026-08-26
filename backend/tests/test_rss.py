@@ -4,7 +4,13 @@ from app.rss import _proxy_for_client, _size_bytes, _torrentleech_metadata
 def test_proxy_accepts_socks_and_rejects_unsafe_shapes() -> None:
     assert _proxy_for_client("socks5://127.0.0.1:1080") == "socks5://127.0.0.1:1080"
     assert _proxy_for_client("https://proxy.example:8443") == "https://proxy.example:8443"
-    for invalid in ("ftp://proxy.example", "socks5://proxy.example/path?secret=x", "http://proxy.example bad"):
+    for invalid in (
+        "ftp://proxy.example",
+        "socks5://proxy.example/path?secret=x",
+        "http://proxy.example bad",
+        "socks5://user:password@proxy.example:1080",
+        "https://user@proxy.example:8443",
+    ):
         try:
             _proxy_for_client(invalid)
         except ValueError:

@@ -6,6 +6,11 @@ from urllib.parse import urlparse
 
 from pydantic import BaseModel, Field, field_validator
 
+from .validation import validate_proxy_url
+
+
+AdapterType = Literal["generic_rss", "torrentleech", "torrent_leech"]
+
 
 class ServiceStatus(StrEnum):
     HEALTHY = "healthy"
@@ -43,7 +48,7 @@ class Release(BaseModel):
 class FeedCreate(BaseModel):
     name: str = Field(min_length=1, max_length=120)
     url: str = Field(min_length=1)
-    adapter_type: str = "generic_rss"
+    adapter_type: AdapterType = "generic_rss"
     proxy_url: str | None = Field(default=None, max_length=2048)
     interval_minutes: int = Field(default=30, ge=10, le=1440)
 
@@ -67,20 +72,7 @@ class FeedCreate(BaseModel):
     @field_validator("proxy_url")
     @classmethod
     def require_supported_proxy_url(cls, value: str | None) -> str | None:
-        if value is None or not value.strip():
-            return None
-        parsed = urlparse(value)
-        if parsed.scheme.lower() not in {"http", "https", "socks5", "socks5h"} or not parsed.hostname:
-            raise ValueError("Proxy URL must be an absolute http(s) or socks5 URL")
-        if parsed.query or parsed.fragment or any(character.isspace() for character in value):
-            raise ValueError("Proxy URL must not contain whitespace, a query, or a fragment")
-        try:
-            port = parsed.port
-        except ValueError as error:
-            raise ValueError("Proxy URL has an invalid port") from error
-        if port is not None and not 1 <= port <= 65535:
-            raise ValueError("Proxy URL has an invalid port")
-        return value
+        return validate_proxy_url(value)
 
 
 class FeedUpdate(BaseModel):
@@ -112,6 +104,25 @@ class FeedResponse(BaseModel):
     last_checked_at: datetime | None = None
 
     model_config = {"from_attributes": True}
+
+
+class TrackerCredentialsUpdate(BaseModel):
+    """Write-only tracker credentials; the API never serializes their values."""
+
+    cookie: str | None = Field(default=None, max_length=16384)
+    passkey: str | None = Field(default=None, max_length=4096)
+
+
+class TrackerCredentialsStatus(BaseModel):
+    configured: bool
+
+
+class DiskThresholdUpdate(BaseModel):
+    disk_free_threshold_percent: float = Field(ge=0, le=100)
+
+
+class DiskThresholdResponse(DiskThresholdUpdate):
+    pass
 
 
 class FeedCheckItem(BaseModel):

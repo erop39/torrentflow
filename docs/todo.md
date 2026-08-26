@@ -25,27 +25,27 @@
 - [x] **Disk space monitoring + alerts**
   Проверяется data volume, статус виден в health/Settings, audit и Telegram отправляются при смене состояния.
 
-- [x] **Export / Import persisted config** (feeds + rules + categories)
-  JSON export и JSON/YAML import; UI делает безопасный merge, API replace требует явного подтверждения.
+- [x] **Export / Import persisted config** (feeds + rules + categories + disk setting)
+  JSON/YAML export и import; UI делает безопасный merge, API replace требует явного подтверждения.
 
 ---
 
 ## Высокий приоритет — закрыть до расширения доступа
 
-- [ ] **Запретить proxy credentials в SQLite и export**
-  Сейчас `user:password@` в proxy URL можно сохранить и выгрузить вместе с конфигурацией. Нужна валидация без userinfo или отдельное environment-only хранение.
+- [x] **Запретить proxy credentials в SQLite и export**
+  `user:password@` отклоняется общим валидатором, а migration `20260826_10` удаляет legacy URL с userinfo.
 
-- [ ] **Определить и реализовать модель защищённых tracker credentials**
-  Сейчас passkey/cookies в БД не существуют: RSS URL и integration credentials не должны содержать секретов. Если tracker потребует cookie/passkey, добавить зашифрованное at-rest хранение с ротацией ключа, а не хранить значения в feed URL.
+- [x] **Защищённые tracker credentials**
+  Cookie/passkey хранятся write-only с Fernet-шифрованием, ключ поступает только из `TORRENTFLOW_ENCRYPTION_KEY`, а export/import их исключает.
 
-- [ ] **Добавить настоящий adapter integration suite**
-  Нужны локальный HTTP RSS/TorrentLeech fixture, проверка SOCKS transport и migration/startup lifecycle; существующие тесты покрывают matching и HTTP-моки.
+- [x] **Добавить adapter integration suite**
+  Есть local HTTP RSS/TorrentLeech fixture, реальный SOCKS5 transport и migration/startup coverage.
 
-- [ ] **Валидировать adapter type при создании feed**
-  Неверный adapter сейчас сохранится и упадёт при первом scan вместо `422`.
+- [x] **Валидировать adapter type при создании feed**
+  Pydantic contract принимает только поддерживаемые adapter types и возвращает `422` до сохранения.
 
-- [ ] **Расширить export/import до явного policy для runtime settings**
-  Решить, какие non-secret settings (например, disk threshold) должны быть переносимы, сохранив credentials только в environment.
+- [x] **Явный policy для runtime settings**
+  Portable export переносит disk threshold; credentials, URLs с userinfo и environment configuration не переносятся.
 
 ---
 

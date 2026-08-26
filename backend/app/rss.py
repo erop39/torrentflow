@@ -6,9 +6,7 @@ from urllib.parse import urlparse
 import feedparser
 import httpx
 
-
-SUPPORTED_ADAPTER_TYPES = {"generic_rss", "torrentleech", "torrent_leech"}
-SUPPORTED_PROXY_SCHEMES = {"http", "https", "socks5", "socks5h"}
+from .validation import SUPPORTED_ADAPTER_TYPES, validate_proxy_url
 
 
 def _proxy_for_client(proxy_url: str | None) -> str | None:
@@ -17,22 +15,7 @@ def _proxy_for_client(proxy_url: str | None) -> str | None:
     Local proxy endpoints are intentionally allowed: a SOCKS gateway commonly runs
     beside TorrentFlow. This validation limits protocols and avoids malformed URLs.
     """
-    if proxy_url is None or not proxy_url.strip():
-        return None
-    if proxy_url != proxy_url.strip() or any(character.isspace() for character in proxy_url):
-        raise ValueError("Proxy URL must not contain whitespace")
-    parsed = urlparse(proxy_url)
-    if parsed.scheme.lower() not in SUPPORTED_PROXY_SCHEMES or not parsed.hostname:
-        raise ValueError("Proxy URL must use http(s) or socks5 and include a host")
-    if parsed.query or parsed.fragment:
-        raise ValueError("Proxy URL must not include a query or fragment")
-    try:
-        port = parsed.port
-    except ValueError as error:
-        raise ValueError("Proxy URL has an invalid port") from error
-    if port is not None and not 1 <= port <= 65535:
-        raise ValueError("Proxy URL has an invalid port")
-    return proxy_url
+    return validate_proxy_url(proxy_url)
 
 
 def _as_int(value: Any) -> int:
@@ -106,6 +89,7 @@ async def fetch_entries(
     *,
     proxy_url: str | None = None,
     adapter_type: str = "generic_rss",
+    cookie: str | None = None,
 ) -> list[dict[str, str | int | bool]]:
     """Fetch and normalise generic RSS or TorrentLeech feed entries.
 
@@ -118,8 +102,9 @@ async def fetch_entries(
         raise ValueError(f"Unsupported feed adapter: {adapter_type}")
     proxy = _proxy_for_client(proxy_url)
     try:
-        async with httpx.AsyncClient(timeout=20, follow_redirects=True, proxy=proxy) as client:
-            response = await client.get(url)
+        headers = {"Cookie": cookie} if cookie else None
+        async with httpx.AsyncClient(timeout=20, follow_redirects=True, proxy=proxy, trust_env=False) as client:
+            response = await client.get(url, headers=headers)
             response.raise_for_status()
     except ImportError as error:
         if proxy and urlparse(proxy).scheme.lower().startswith("socks"):

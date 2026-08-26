@@ -10,6 +10,9 @@
 - TorrentLeech RSS metadata extraction (uploader, freeleech, double-upload, size), optional HTTP(S)/SOCKS5 proxy per feed, and qBittorrent mapped auto-add targets.
 - Disk-space monitoring of the application data volume with a configurable free-space threshold, health output, audit events, and transition-based Telegram alerts.
 - Versioned configuration backup: JSON export and JSON/YAML import for persisted feeds, rules, and categories; destructive replacement is protected by explicit API confirmation.
+- Encrypted, write-only per-feed tracker cookies and passkeys, backed by `TORRENTFLOW_ENCRYPTION_KEY`; they are excluded from exports and removed with their feed.
+- JSON and YAML configuration export in Settings, including the non-secret disk-alert threshold.
+- Real local HTTP RSS and SOCKS5 adapter integration coverage, shared proxy validation, strict adapter-type input validation, and migration `20260826_10` that removes legacy proxy URLs containing userinfo.
 - Добавлен multi-arch GitHub Actions build для `linux/amd64` и `linux/arm64`: pull request проверяет сборку, а `main` и version tags публикуют backend/frontend images в GHCR.
 - Добавлена подробная инструкция развёртывания на Synology Container Manager: GHCR images, managed volumes и bind mounts, права `root:root`/`0700`, backups, восстановление, upgrades, HTTPS и troubleshooting.
 - Расширено backend-покрытие до 26 тестов: edge cases matching и изолированные HTTP-проверки qBittorrent/Telegram адаптеров.
@@ -49,6 +52,7 @@
 ### Changed
 
 - README and backlog now describe Smart Rules, TorrentLeech/proxy feeds, disk monitoring, configuration backup, and their remaining security/coverage limits accurately.
+- Proxy URLs with embedded credentials are now rejected and existing persisted userinfo URLs are removed by migration; proxy authentication belongs outside TorrentFlow. Matching accepts explicit release metadata, and RSS/configuration routes and scheduler work live outside `main.py`.
 - API больше не создаёт SQLite-схему через `create_all`: при каждом старте применяется идемпотентный `alembic upgrade head`, поэтому local и production используют один versioned migration lifecycle.
 - Аудит хранения подтвердил, что SQLite не содержит passkeys, cookies или integration credentials: session cookie хранит только подписанный признак admin, а все секреты остаются в environment variables.
 - Удалён случайно закоммиченный Telegram token из design-прототипа и переписана Git history; token требует отзыва и перевыпуска в BotFather.

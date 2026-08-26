@@ -8,8 +8,10 @@ def _normalized_csv(value: str | None) -> set[str]:
 def _non_negative_int(value: object, default: int | None = None) -> int | None:
     if isinstance(value, bool):
         return default
+    if not isinstance(value, (int, float, str)):
+        return default
     try:
-        result = int(value)  # type: ignore[arg-type]
+        result = int(value)
     except (TypeError, ValueError):
         return default
     return result if result >= 0 else default
@@ -21,8 +23,8 @@ def _rule_order_key(rule: Rule) -> tuple[int, int]:
 
 def match_rule(
     title: str,
-    seeds: int | list[Rule],
-    rules: list[Rule] | None = None,
+    seeds: int,
+    rules: list[Rule],
     *,
     freeleech: bool = False,
     double_upload: bool = False,
@@ -31,13 +33,9 @@ def match_rule(
 ) -> Rule | None:
     """Return the first enabled rule that matches release metadata.
 
-    The two-argument ``match_rule(title, rules)`` form remains supported for
-    callers that only have a title. Rules are sorted here as a final guard so
-    every caller gets the same priority-then-id outcome.
+    Rules are sorted here as a final guard so every caller gets the same
+    priority-then-id outcome.
     """
-    if rules is None:
-        rules = seeds  # type: ignore[assignment]
-        seeds = 0
     normalized = str(title).casefold()
     actual_seeds = _non_negative_int(seeds, 0) or 0
     actual_size = _non_negative_int(size_bytes)

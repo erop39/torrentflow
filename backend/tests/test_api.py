@@ -1,5 +1,6 @@
 import asyncio
 
+from cryptography.fernet import Fernet
 from fastapi.testclient import TestClient
 import pytest
 from uuid import uuid4
@@ -70,6 +71,25 @@ def test_feed_crud_contract() -> None:
     assert deleted.status_code == 204
 
 
+def test_tracker_credentials_api_encrypts_without_serializing_or_orphaning(monkeypatch) -> None:
+    monkeypatch.setenv("TORRENTFLOW_ENCRYPTION_KEY", Fernet.generate_key().decode("ascii"))
+    marker = f"secret-{uuid4()}"
+    with TestClient(app) as client:
+        login(client)
+        feed = client.post("/api/feeds", json={"name": f"Credential {uuid4()}", "url": "https://example.test/rss"})
+        feed_id = feed.json()["id"]
+        stored = client.put(f"/api/feeds/{feed_id}/credentials", json={"cookie": marker, "passkey": marker})
+        status = client.get(f"/api/feeds/{feed_id}/credentials")
+        exported = client.get("/api/config/export")
+        deleted = client.delete(f"/api/feeds/{feed_id}")
+        after_delete = client.get(f"/api/feeds/{feed_id}/credentials")
+    assert stored.json() == {"configured": True}
+    assert status.json() == {"configured": True}
+    assert marker not in exported.text
+    assert deleted.status_code == 204
+    assert after_delete.json() == {"configured": False}
+
+
 def test_protected_endpoint_requires_login() -> None:
     with TestClient(app) as client:
         response = client.get("/api/feeds")
@@ -110,6 +130,15 @@ def test_feed_rejects_local_or_non_http_url() -> None:
         wrong_scheme = client.post("/api/feeds", json={"name": f"File {uuid4()}", "url": "file:///etc/passwd"})
     assert localhost.status_code == 422
     assert wrong_scheme.status_code == 422
+
+
+def test_feed_rejects_unknown_adapter_and_proxy_credentials() -> None:
+    with TestClient(app) as client:
+        login(client)
+        unknown_adapter = client.post("/api/feeds", json={"name": f"Unknown adapter {uuid4()}", "url": "https://example.test/rss", "adapter_type": "unsupported"})
+        credential_proxy = client.post("/api/feeds", json={"name": f"Credential proxy {uuid4()}", "url": "https://example.test/rss", "proxy_url": "socks5://user:password@proxy.example:1080"})
+    assert unknown_adapter.status_code == 422
+    assert credential_proxy.status_code == 422
 
 
 def test_categories_control_rule_validation_and_default_visibility() -> None:
@@ -215,13 +244,16 @@ def test_configuration_export_and_yaml_merge_import_are_secret_free() -> None:
         assert client.post("/api/categories", json={"name": category_name, "color": "#112233", "is_interesting": True}).status_code == 201
         assert client.post("/api/rules", json={"name": f"Export {uuid4()}", "category": category_name, "freeleech_only": True, "qb_category": "archive"}).status_code == 201
         exported = client.get("/api/config/export")
+        exported_yaml = client.get("/api/config/export?format=yaml")
         assert client.post("/api/config/import", content=f"format: torrentflow/configuration\nversion: 1\ncategories:\n  - name: imported\n    color: '#445566'\n    is_interesting: false\nfeeds: []\nrules: []\n", headers={"content-type": "application/yaml"}).status_code == 200
         categories = client.get("/api/categories")
     assert exported.status_code == 200
+    assert exported_yaml.status_code == 200
     document = exported.json()
     assert document["format"] == "torrentflow/configuration"
     assert any(rule["freeleech_only"] and rule["qb_category"] == "archive" for rule in document["rules"])
     assert "TORRENTFLOW_" not in exported.text
+    assert "format: torrentflow/configuration" in exported_yaml.text
     assert any(category["name"] == "imported" for category in categories.json())
 
 

@@ -4,7 +4,6 @@ from datetime import UTC, datetime
 import hmac
 import os
 import asyncio
-import logging
 import sys
 
 from fastapi import Depends, FastAPI, HTTPException, Request, Response, status
@@ -21,9 +20,12 @@ from .migrations import upgrade_database
 from .rss import fetch_entries
 from .matching import match_rule
 from .integrations import qbit_add, qbit_configured, qbit_downloads, telegram_configured, telegram_send
-from .configuration import ConfigurationValidationError, canonical_configuration_json, export_configuration, import_configuration
 from .monitoring import DiskSpaceState, check_disk_space
+from .configuration import get_disk_free_threshold_percent
+from .secrets import delete_tracker_credentials, load_tracker_credentials
 from .schemas import AuditEventResponse, CategoryCreate, CategoryResponse, CategoryUpdate, DownloadItem, FeedCheckItem, FeedCheckResponse, FeedCreate, FeedResponse, FeedUpdate, HealthResponse, IntegrationStatus, LoginRequest, Release, ReleaseOutcome, RuleCreate, RuleResponse, ServiceHealth, ServiceStatus, SessionResponse, StoredReleaseResponse
+from . import automation
+from .routes import configuration_router
 
 IS_PRODUCTION = os.getenv("TORRENTFLOW_ENV") == "production"
 ADMIN_PASSWORD = os.getenv("TORRENTFLOW_ADMIN_PASSWORD", "change-me")
@@ -61,7 +63,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://127.0.0.1:4175", "http://localhost:4175"],
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PATCH", "DELETE"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
     allow_headers=["Content-Type"],
 )
 
@@ -70,18 +72,21 @@ RELEASES = [
     Release(id="ubuntu", title="Ubuntu.24.04.2.LTS", source="Ubuntu RSS", rule="Linux ISO", category="linux", size="5.6 GB", seeds=185, outcome=ReleaseOutcome.NOTIFY),
 ]
 
-logger = logging.getLogger(__name__)
 _disk_alert_active = False
 
 
-def disk_status():
+def disk_default_threshold() -> float:
+    """Read the deployment default used until a non-secret setting is saved."""
+    try:
+        return min(100.0, max(0.0, float(os.getenv("TORRENTFLOW_DISK_FREE_THRESHOLD_PERCENT", "10"))))
+    except ValueError:
+        return 10.0
+
+
+async def disk_status(session: AsyncSession):
     """Inspect the configured data volume without ever exposing filesystem paths as secrets."""
     default_path = "/data" if IS_PRODUCTION else "data"
-    try:
-        threshold = float(os.getenv("TORRENTFLOW_DISK_FREE_THRESHOLD_PERCENT", "10"))
-    except ValueError:
-        threshold = 10.0
-    threshold = min(100.0, max(0.0, threshold))
+    threshold = await get_disk_free_threshold_percent(session, default=disk_default_threshold())
     return check_disk_space(os.getenv("TORRENTFLOW_DISK_PATH", default_path), threshold_percent=threshold)
 
 
@@ -91,96 +96,41 @@ async def require_admin(request: Request) -> None:
 
 
 async def audit(session: AsyncSession, event_type: str, message: str, release_id: int | None = None) -> None:
-    session.add(AuditEvent(event_type=event_type, message=message, release_id=release_id))
+    await automation.record_audit(session, event_type, message, release_id)
+
+
+app.include_router(configuration_router(require_admin, audit))
 
 
 async def scan_feed(feed: Feed, session: AsyncSession) -> FeedCheckResponse:
-    fetch_options: dict[str, str] = {}
-    if feed.proxy_url:
-        fetch_options["proxy_url"] = feed.proxy_url
-    if feed.adapter_type != "generic_rss":
-        fetch_options["adapter_type"] = feed.adapter_type
-    entries = await fetch_entries(feed.url, **fetch_options)
-    rules = list((await session.scalars(select(Rule).order_by(Rule.priority, Rule.id))).all())
-    rule_names = {rule.id: rule.name for rule in rules}
-    created = 0
-    items: list[FeedCheckItem] = []
-    for entry in entries:
-        external_id = str(entry["external_id"])
-        existing = await session.scalar(select(StoredRelease).where(StoredRelease.external_id == external_id))
-        if existing is None:
-            seeds = int(entry.get("seeds", 0))
-            matched = match_rule(
-                str(entry["title"]), seeds, rules,
-                freeleech=entry.get("freeleech") is True,
-                double_upload=entry.get("double_upload") is True,
-                size_bytes=entry.get("size_bytes") if isinstance(entry.get("size_bytes"), int) else None,
-                uploader=str(entry.get("uploader") or ""),
-            )
-            action = matched.action if matched else "ignored"
-            existing = StoredRelease(feed_id=feed.id, external_id=external_id, title=str(entry["title"]), link=str(entry["link"]), seeds=seeds, category=matched.category if matched else "series", matched_rule_id=matched.id if matched else None, status=action)
-            session.add(existing)
-            await session.flush()
-            created += 1
-            await audit(session, "release.discovered", f"{feed.name}: {existing.title}", existing.id)
-            if action in {"auto_add", "both"} and existing.link and qbit_configured():
-                try:
-                    qbit_options = {key: value for key, value in {"category": matched.qb_category, "save_path": matched.save_path}.items() if value}
-                    await qbit_add(existing.link, **qbit_options)
-                    await audit(session, "qbit.added", existing.title, existing.id)
-                except Exception as error:
-                    await audit(session, "qbit.failed", f"{existing.title}: {error}", existing.id)
-            if action in {"notify", "both"} and telegram_configured():
-                try:
-                    await telegram_send(f"TorrentFlow: {existing.title}\nRule: {matched.name if matched else '—'}\nCategory: {existing.category}")
-                    await audit(session, "telegram.sent", existing.title, existing.id)
-                except Exception as error:
-                    await audit(session, "telegram.failed", f"{existing.title}: {error}", existing.id)
-        items.append(FeedCheckItem(title=existing.title, status=existing.status, rule_name=rule_names.get(existing.matched_rule_id), category=existing.category, seeds=existing.seeds))
-    feed.last_checked_at = datetime.now(UTC)
-    await session.commit()
-    return FeedCheckResponse(discovered=len(entries), new=created, items=items[:25])
+    return await automation.scan_feed(
+        feed, session,
+        fetch_entries=fetch_entries,
+        match_rule=match_rule,
+        qbit_configured=qbit_configured,
+        qbit_add=qbit_add,
+        telegram_configured=telegram_configured,
+        telegram_send=telegram_send,
+        load_tracker_credentials=load_tracker_credentials,
+        audit=audit,
+    )
 
 
 async def scan_due_feeds_once() -> None:
-    try:
-        # A feed scan may roll back after a network or integration failure. Work
-        # with a fresh session per feed so one rollback cannot expire or discard
-        # another due feed in the same scheduler pass.
-        async with SessionLocal() as listing_session:
-            now = datetime.now(UTC)
-            feed_ids = list((await listing_session.scalars(select(Feed.id).where(Feed.enabled.is_(True)))).all())
-        for feed_id in feed_ids:
-            async with SessionLocal() as session:
-                feed = await session.get(Feed, feed_id)
-                if feed is None or not feed.enabled:
-                    continue
-                last_checked_at = feed.last_checked_at
-                if last_checked_at is not None and last_checked_at.tzinfo is None:
-                    last_checked_at = last_checked_at.replace(tzinfo=UTC)
-                if last_checked_at is not None and (now - last_checked_at).total_seconds() < feed.interval_minutes * 60:
-                    continue
-                try:
-                    await scan_feed(feed, session)
-                except Exception as error:
-                    await session.rollback()
-                    logger.warning("Scheduled RSS scan failed for feed %s: %s", feed_id, error)
-    except Exception as error:
-        logger.exception("RSS scheduler iteration failed: %s", error)
-    await check_disk_space_and_alert()
+    await automation.scan_due_feeds_once(SessionLocal, scan_feed, check_disk_space_and_alert)
 
 
 async def check_disk_space_and_alert() -> None:
     """Record and notify only on low-space state changes, avoiding scheduler spam."""
     global _disk_alert_active
-    status_info = disk_status()
-    is_alerting = status_info.state is not DiskSpaceState.HEALTHY
-    if is_alerting == _disk_alert_active:
-        return
-    _disk_alert_active = is_alerting
-    event_type = "disk.low" if is_alerting else "disk.recovered"
-    message = f"Disk monitor: {status_info.detail}"
     async with SessionLocal() as session:
+        status_info = await disk_status(session)
+        is_alerting = status_info.state is not DiskSpaceState.HEALTHY
+        if is_alerting == _disk_alert_active:
+            return
+        _disk_alert_active = is_alerting
+        event_type = "disk.low" if is_alerting else "disk.recovered"
+        message = f"Disk monitor: {status_info.detail}"
         await audit(session, event_type, message)
         if telegram_configured():
             try:
@@ -191,9 +141,7 @@ async def check_disk_space_and_alert() -> None:
 
 
 async def scheduled_scan_loop() -> None:
-    while True:
-        await scan_due_feeds_once()
-        await asyncio.sleep(60)
+    await automation.scheduled_scan_loop(scan_due_feeds_once, asyncio.sleep)
 
 
 @app.post("/api/auth/login", response_model=SessionResponse, tags=["auth"])
@@ -218,7 +166,7 @@ async def me(request: Request) -> SessionResponse:
 @app.get("/api/health", response_model=HealthResponse, tags=["system"])
 async def get_health(session: AsyncSession = Depends(get_session)) -> HealthResponse:
     rule_count = len(list((await session.scalars(select(Rule).where(Rule.enabled.is_(True)))).all()))
-    disk = disk_status()
+    disk = await disk_status(session)
     return HealthResponse(
         services=[
             ServiceHealth(name="RSS", status=ServiceStatus.HEALTHY, detail="Scheduler active"),
@@ -289,6 +237,7 @@ async def delete_feed(feed_id: int, session: AsyncSession = Depends(get_session)
     feed = await session.get(Feed, feed_id)
     if feed is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Feed not found")
+    await delete_tracker_credentials(session, feed_id)
     await session.execute(delete(StoredRelease).where(StoredRelease.feed_id == feed_id))
     await session.delete(feed)
     await session.commit()
@@ -341,32 +290,9 @@ async def update_category(category_id: int, payload: CategoryUpdate, session: As
     return category
 
 
-@app.get("/api/config/export", tags=["configuration"])
-async def download_configuration(session: AsyncSession = Depends(get_session), _: None = Depends(require_admin)) -> Response:
-    """Download a secret-free, versioned JSON configuration document."""
-    payload = canonical_configuration_json(await export_configuration(session))
-    return Response(content=payload, media_type="application/json", headers={"Content-Disposition": "attachment; filename=torrentflow-config.json"})
-
-
-@app.post("/api/config/import", tags=["configuration"])
-async def upload_configuration(request: Request, mode: str = "merge", confirm_replace: bool = False, session: AsyncSession = Depends(get_session), _: None = Depends(require_admin)) -> dict[str, object]:
-    """Import validated JSON/YAML. Replacement requires an explicit confirmation."""
-    if mode not in {"merge", "replace"}:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="mode must be merge or replace")
-    if mode == "replace" and not confirm_replace:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="replace import requires confirm_replace=true")
-    try:
-        result = await import_configuration(session, await request.body(), mode=mode)  # type: ignore[arg-type]
-    except ConfigurationValidationError as error:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=f"Invalid configuration: {error}") from error
-    await audit(session, "configuration.imported", f"Configuration {result.mode}: {result.feeds} feeds, {result.rules} rules, {result.categories} categories")
-    await session.commit()
-    return {"mode": result.mode, "feeds": result.feeds, "rules": result.rules, "categories": result.categories}
-
-
 @app.get("/api/system/disk", tags=["system"])
-async def get_disk_status(_: None = Depends(require_admin)) -> dict[str, object]:
-    return disk_status().as_dict()
+async def get_disk_status(session: AsyncSession = Depends(get_session), _: None = Depends(require_admin)) -> dict[str, object]:
+    return (await disk_status(session)).as_dict()
 
 
 @app.get("/api/integrations/status", response_model=IntegrationStatus, tags=["integrations"])

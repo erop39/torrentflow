@@ -19,9 +19,10 @@
 - Runtime schema creation was removed in favour of an idempotent Alembic startup upgrade; qBittorrent/Telegram adapters and rule matching now have 26 automated backend tests.
 - Multi-architecture GHCR build CI and a Synology deployment runbook, including named-volume and bind-mount permissions, are complete.
 - Smart Auto-Add constraints, uploader lists, TorrentLeech flags, qBittorrent targets, per-feed proxy, disk alerts, and JSON/YAML configuration backup are implemented.
-- README, changelog, and TODO were reconciled with current functionality and review findings; backend verification is at 33 tests.
+- README, changelog, and TODO were reconciled with current functionality and review findings.
+- Final review findings were closed: proxy userinfo is rejected and legacy values scrubbed by migration; adapter types and proxy validation are centralized; matching has an explicit API; automation/configuration routes are extracted from `main.py`; tracker credentials are Fernet-encrypted and excluded from backups; disk threshold joins portable settings; JSON/YAML export and local HTTP/SOCKS adapter tests are available.
 
 ## Next
 
-- Fix proxy credential persistence/export before using authenticated proxies; then add local HTTP/SOCKS adapter integration coverage and validate feed adapter types at API input.
 - Install/start Docker Desktop, run `scripts/setup-docker-env.sh` to create `.env`, then run Docker Compose end-to-end and live qBittorrent/Telegram tests.
+- Plan encryption-key rotation before long-lived tracker credentials are used broadly.
